@@ -106,13 +106,12 @@ ePointAdd (ExtendedPoint pX pY pZ pT) (ExtendedPoint qX qY qZ qT) =
     h = b+a
 
 ePointMul :: Integer -> ExtendedPoint -> ExtendedPoint
-ePointMul = loop (ExtendedPoint 0 1 1 0)
+ePointMul s = loop 255 (ExtendedPoint 0 1 1 0)
   where
-    loop acc 0 _ = acc
-    loop acc s pP =
-        let acc' = if odd s then ePointAdd acc pP else acc
-            pP' = ePointAdd pP pP
-         in loop acc' (s `shiftR` 1) pP'
+    loop !i !acc !pP
+        | i < 0       = pP `seq` acc
+        | testBit s i = loop (i-1) (ePointAdd acc pP)  (ePointAdd pP pP)
+        | otherwise   = loop (i-1) (ePointAdd acc acc) (ePointAdd acc pP)
 
 ePointCompress :: ExtendedPoint -> PointCompressed
 ePointCompress (ExtendedPoint pX pY pZ _) =
