@@ -30,6 +30,7 @@ test-suite cardano-crypto-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   build-depends:       base
+                     , bytestring
                      , cardano-crypto
                      , tasty
                      , tasty-quickcheck
