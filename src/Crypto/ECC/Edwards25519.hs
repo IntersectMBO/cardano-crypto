@@ -26,6 +26,7 @@ module Crypto.ECC.Edwards25519
     , PointCompressed
     -- * smart constructor & destructor
     , scalar
+    , unScalar
     , pointCompressed
     , unPointCompressed
     -- * Arithmetic
@@ -44,7 +45,7 @@ import qualified Data.ByteString as B (reverse)
 import qualified Data.ByteArray as B
 
 -- | Represent a scalar in the base field
-newtype Scalar = Scalar ByteString
+newtype Scalar = Scalar { unScalar :: ByteString }
 
 -- | Represent a point on the Edwards 25519 curve
 newtype PointCompressed = PointCompressed { unPointCompressed :: ByteString }
