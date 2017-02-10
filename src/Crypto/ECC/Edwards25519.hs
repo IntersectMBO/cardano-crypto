@@ -82,7 +82,7 @@ pointAdd p1 p2 = ePointCompress $ ePointAdd (ePointDecompress p1) (ePointDecompr
 
 -- | Lift a scalar to the curve, and returning a compressed point
 scalarToPoint :: Scalar -> PointCompressed
-scalarToPoint (Scalar sec) = ePointCompress $ ePointMul (fromBytes sec) pG
+scalarToPoint (Scalar sec) = ePointCompress $ ePointMul (fromBytes sec `mod` p) pG
 
 -- | Point represented by (X, Y, Z, T) in extended twisted edward coordinates.
 --
