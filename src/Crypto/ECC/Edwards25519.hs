@@ -54,7 +54,7 @@ newtype PointCompressed = PointCompressed { unPointCompressed :: ByteString }
 -- Create a Ed25519 scalar
 --
 -- Only check that the length is of expected size (32 bytes), no effort is made for the scalar
--- to be in the right base field range.
+-- to be in the right base field range on purpose.
 scalar :: ByteString -> Scalar
 scalar bs
     | B.length bs /= 32 = error "invalid scalar"
