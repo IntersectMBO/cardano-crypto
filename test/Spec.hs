@@ -28,15 +28,26 @@ testEdwards25519 =
     ltc = Edwards25519.scalarToPoint
 
 testHdDerivation =
-    [ testProperty "pub . sec-derivation = pub-derivation . pub" normalDerive ]
+    [ testProperty "pub . sec-derivation = pub-derivation . pub" normalDerive
+    , testProperty "verify (pub . pub-derive) (sign . sec-derivation)" verifyDerive
+    ]
   where
     dummyChainCode = B.replicate 32 38
+    dummyMsg = B.pack [1,2,3,4,5,6,7]
+
     normalDerive (Ed _ s) n =
         let prv = either error id $ xprv (Edwards25519.unScalar s `B.append` dummyChainCode)
             pub = toXPub prv
             cPrv = deriveXPrv prv DeriveNormal n
             cPub = deriveXPub pub n
          in unXPub (toXPub cPrv) === unXPub cPub
+
+    verifyDerive (Ed _ s) n =
+        let prv = either error id $ xprv (Edwards25519.unScalar s `B.append` dummyChainCode)
+            pub = toXPub prv
+            cPrv = deriveXPrv prv DeriveNormal n
+            cPub = deriveXPub pub n
+         in verify cPub dummyMsg (sign cPrv dummyMsg)
 
 
 main :: IO ()

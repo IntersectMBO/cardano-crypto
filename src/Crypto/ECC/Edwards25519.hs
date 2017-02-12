@@ -24,6 +24,7 @@ module Crypto.ECC.Edwards25519
     -- * Basic types
       Scalar
     , PointCompressed
+    , Signature(..)
     -- * smart constructor & destructor
     , scalar
     , unScalar
@@ -34,6 +35,9 @@ module Crypto.ECC.Edwards25519
     , scalarAdd
     , scalarToPoint
     , pointAdd
+    -- * Signature & Verify
+    , sign
+    , verify
     ) where
 
 import           Data.Bits
@@ -41,8 +45,8 @@ import           Crypto.Hash
 import           Crypto.Number.Serialize
 import           Crypto.Number.ModArithmetic
 import           Data.ByteString (ByteString)
-import qualified Data.ByteString as B (reverse)
-import qualified Data.ByteArray as B
+import qualified Data.ByteString as B (reverse, append)
+import qualified Data.ByteArray as B hiding (append)
 
 -- | Represent a scalar in the base field
 newtype Scalar = Scalar { unScalar :: ByteString }
@@ -50,6 +54,10 @@ newtype Scalar = Scalar { unScalar :: ByteString }
 -- | Represent a point on the Edwards 25519 curve
 newtype PointCompressed = PointCompressed { unPointCompressed :: ByteString }
     deriving (Show,Eq)
+
+-- | Represent a signature
+newtype Signature = Signature { unSignature :: ByteString }
+
 
 -- Create a Ed25519 scalar
 --
@@ -67,6 +75,37 @@ pointCompressed :: ByteString -> PointCompressed
 pointCompressed bs
     | B.length bs /= 32 = error "invalid compressed point"
     | otherwise         = PointCompressed bs
+
+-- | Create a signature using a variant of ED25519 signature
+--
+-- we don't hash the secret key to derive a key + prefix, but
+-- instead we take an explicit salt and compute a prefix
+-- using the secret key + salt.
+sign :: B.ByteArrayAccess msg => Scalar -> ByteString -> msg -> Signature
+sign a salt msg =
+    Signature (unPointCompressed pR `B.append` toBytes s)
+  where
+    prefix = hash ((unScalar a) `B.append` salt) :: Digest SHA512
+    pA = scalarToPoint a
+    r = sha512_modq (B.convert prefix `B.append` B.convert msg)
+    pR = ePointCompress $ ePointMul r pG
+    h = sha512_modq (unPointCompressed pR `B.append` unPointCompressed pA `B.append` B.convert msg)
+    s = (r + h * (fromBytes (unScalar a) `mod` p)) `mod` q
+
+verify :: B.ByteArrayAccess msg => PointCompressed -> msg -> Signature -> Bool
+verify pA msg (Signature signature) =
+    pS `pointEqual` ePointAdd (ePointDecompress pR) hA
+  where
+    (pR, s) =
+        let (sig0, sig1) = B.splitAt 32 signature
+         in (PointCompressed sig0, fromBytes sig1)
+
+    pointEqual (ExtendedPoint pX pY pZ _) (ExtendedPoint qX qY qZ _) =
+        ((pX * qZ - qX * pZ) `mod` p == 0) && ((pY * qZ - qY * pZ) `mod` p == 0)
+
+    h = sha512_modq (unPointCompressed pR `B.append` unPointCompressed pA `B.append` B.convert msg)
+    pS = ePointMul s pG
+    hA = ePointMul h (ePointDecompress pA)
 
 -- | Add 2 scalar in the base field together
 scalarAdd :: Scalar -> Scalar -> Scalar
@@ -150,7 +189,6 @@ recoverX y xSign = x''
 -- | Unserialize little endian
 fromBytes :: ByteString -> Integer
 fromBytes = os2ip . B.reverse
-
 -- | Serialize little endian of a given size (32 bytes)
 toBytes :: Integer -> ByteString
 toBytes = B.reverse . i2ospOf_ 32
@@ -177,3 +215,7 @@ pG :: ExtendedPoint
   where
     !g_y = (4 * modp_inv 5) `mod` p
     !g_x = recoverX g_y False
+
+sha512_modq :: B.ByteArrayAccess ba => ba -> Integer
+sha512_modq bs =
+    fromBytes (B.convert (hash bs :: Digest SHA512)) `mod` q

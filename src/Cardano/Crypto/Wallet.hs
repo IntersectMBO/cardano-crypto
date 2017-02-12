@@ -24,6 +24,7 @@ module Cardano.Crypto.Wallet
     -- * Extended Private & Public types
     , XPrv
     , XPub
+    , XSignature
     , DerivationType(..)
     , xprv
     , xpub
@@ -42,13 +43,14 @@ module Cardano.Crypto.Wallet
 import           Crypto.OpenSSL.Random (randBytes)
 import qualified Crypto.PubKey.Ed25519 as Ed25519
 import qualified Crypto.ECC.Edwards25519 as Edwards25519
-import           Crypto.Hash (SHA512)
+import           Crypto.Hash (SHA512, hash)
 import qualified Crypto.MAC.HMAC as HMAC
 import           Crypto.Error (throwCryptoError)
 import           Data.Word
 import           Data.ByteString (ByteString)
-import qualified Data.ByteString as B (splitAt, length, append, pack)
+import qualified Data.ByteString as B (splitAt, length, pack)
 import           Data.ByteArray (ByteArrayAccess, convert)
+import qualified Data.ByteArray as B (append)
 
 import Debug.Trace
 
@@ -59,6 +61,8 @@ data XPrv = XPrv !Edwards25519.Scalar !ChainCode
 
 data XPub = XPub !Edwards25519.PointCompressed !ChainCode
     deriving (Eq)
+
+newtype XSignature = XSignature Edwards25519.Signature
 
 data DerivationType = DeriveHardened | DeriveNormal
     deriving (Show,Eq)
@@ -110,16 +114,21 @@ deriveXPub (XPub pub ccode) n =
         !derived = Edwards25519.scalarToPoint $ Edwards25519.scalar iL
      in XPub (Edwards25519.pointAdd pub derived) iR
 
-sign :: ByteArrayAccess msg => XPrv -> msg -> Ed25519.Signature
-sign (XPrv priv _) ba =
+sign :: ByteArrayAccess msg => XPrv -> msg -> XSignature
+sign (XPrv priv (ChainCode cc)) ba =
+    XSignature $ Edwards25519.sign priv cc ba
+    {-
     let sec = throwCryptoError $ Ed25519.secretKey $ Edwards25519.unScalar priv
-        pub = Ed25519.toPublic sec
+        pub = throwCryptoError $ Ed25519.publicKey $ Edwards25519.unPointCompressed (Edwards25519.scalarToPoint priv) -- point
+        -- pub = Ed25519.toPublic sec
      in Ed25519.sign sec pub ba
+     -}
 
-verify :: ByteArrayAccess msg => XPub -> msg -> Ed25519.Signature -> Bool
-verify (XPub point _) ba signature =
+verify :: ByteArrayAccess msg => XPub -> msg -> XSignature -> Bool
+verify (XPub point _) ba (XSignature signature) =
     let pub = throwCryptoError $ Ed25519.publicKey $ Edwards25519.unPointCompressed point
-     in Ed25519.verify pub ba signature
+        sig = throwCryptoError $ Ed25519.signature $ Edwards25519.unSignature signature
+     in Ed25519.verify pub ba sig
 
 -- hashing methods either hardened or normal
 data DerivationHash where
