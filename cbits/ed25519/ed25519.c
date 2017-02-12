@@ -12,6 +12,8 @@
 #include "ed25519-randombytes.h"
 #include "ed25519-hash.h"
 
+#include <stdio.h>
+
 /*
 	Generates a (extsk[0..31]) and aExt (extsk[32..63])
 */
@@ -38,10 +40,15 @@ void
 ED25519_FN(ed25519_publickey) (const ed25519_secret_key sk, ed25519_public_key pk) {
 	bignum256modm a;
 	ge25519 ALIGN(16) A;
-	hash_512bits extsk;
+	hash_512bits extsk = { 0 };
 
 	/* A = aB */
+#ifdef VARIANT_CODE
+	/* in variant we don't stretch the key through hashing first */
+	memcpy(extsk, sk, 32);
+#else
 	ed25519_extsk(extsk, sk);
+#endif
 	expand256_modm(a, extsk, 32);
 	ge25519_scalarmult_base_niels(&A, ge25519_niels_base_multiples, a);
 	ge25519_pack(pk, &A);
@@ -49,13 +56,21 @@ ED25519_FN(ed25519_publickey) (const ed25519_secret_key sk, ed25519_public_key p
 
 
 void
-ED25519_FN(ed25519_sign) (const unsigned char *m, size_t mlen, const ed25519_secret_key sk, const ed25519_public_key pk, ed25519_signature RS) {
+ED25519_FN(ed25519_sign) (const unsigned char *m, size_t mlen, const unsigned char *salt, size_t slen, const ed25519_secret_key sk, const ed25519_public_key pk, ed25519_signature RS) {
 	ed25519_hash_context ctx;
 	bignum256modm r, S, a;
 	ge25519 ALIGN(16) R;
 	hash_512bits extsk, hashr, hram;
 
+#ifdef VARIANT_CODE
+	ed25519_hash_init(&ctx);
+	ed25519_hash_update(&ctx, sk, 32);
+	ed25519_hash_update(&ctx, salt, slen);
+	ed25519_hash_final(&ctx, hashr);
+	memcpy(extsk, hashr, 64);
+#else
 	ed25519_extsk(extsk, sk);
+#endif
 
 	/* r = H(aExt[32..64], m) */
 	ed25519_hash_init(&ctx);
@@ -73,13 +88,17 @@ ED25519_FN(ed25519_sign) (const unsigned char *m, size_t mlen, const ed25519_sec
 	expand256_modm(S, hram, 64);
 
 	/* S = H(R,A,m)a */
+#ifdef VARIANT_CODE
+	expand256_modm(a, sk, 32);
+#else
 	expand256_modm(a, extsk, 32);
+#endif
 	mul256_modm(S, S, a);
 
 	/* S = (r + H(R,A,m)a) */
 	add256_modm(S, S, r);
 
-	/* S = (r + H(R,A,m)a) mod L */	
+	/* S = (r + H(R,A,m)a) mod L */
 	contract256_modm(RS + 32, S);
 }
 
@@ -108,7 +127,7 @@ ED25519_FN(ed25519_sign_open) (const unsigned char *m, size_t mlen, const ed2551
 	return ed25519_verify(RS, checkR, 32) ? 0 : -1;
 }
 
-#include "ed25519-donna-batchverify.h"
+//#include "ed25519-donna-batchverify.h"
 
 /*
 	Fast Curve25519 basepoint scalar multiplication
@@ -140,4 +159,3 @@ ED25519_FN(curved25519_scalarmult_basepoint) (curved25519_key pk, const curved25
 	curve25519_mul(yplusz, yplusz, zminusy);
 	curve25519_contract(pk, yplusz);
 }
-

@@ -10,8 +10,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE BangPatterns #-}
 module Crypto.ECC.Ed25519Donna
-    ( SecretKey
-    , PublicKey
+    ( SecretKey(..)
+    , PublicKey(..)
     , Signature
     -- * Smart constructors
     , signature
@@ -87,15 +87,17 @@ toPublic (SecretKey sec) = PublicKey <$>
 {-# NOINLINE toPublic #-}
 
 -- | Sign a message using the key pair
-sign :: ByteArrayAccess ba => SecretKey -> PublicKey -> ba -> Signature
-sign secret public message =
+sign :: (ByteArrayAccess msg, ByteArrayAccess salt) => SecretKey -> salt -> PublicKey -> msg -> Signature
+sign secret salt public message =
     Signature $ B.allocAndFreeze signatureSize $ \sig ->
-        withByteArray secret  $ \sec ->
-        withByteArray public  $ \pub ->
-        withByteArray message $ \msg ->
-             ccryptonite_ed25519_sign msg (fromIntegral msgLen) sec pub sig
+        withByteArray secret  $ \sec   ->
+        withByteArray public  $ \pub   ->
+        withByteArray salt    $ \saltP ->
+        withByteArray message $ \msg   ->
+             ccryptonite_ed25519_sign msg (fromIntegral msgLen) saltP (fromIntegral saltLen) sec pub sig
   where
-    !msgLen = B.length message
+    !msgLen  = B.length message
+    !saltLen = B.length salt
 
 -- | Verify a message
 verify :: ByteArrayAccess ba => PublicKey -> ba -> Signature -> Bool
@@ -132,6 +134,8 @@ foreign import ccall "cardano_crypto_ed25519_sign_open"
 foreign import ccall "cardano_crypto_ed25519_sign"
     ccryptonite_ed25519_sign :: Ptr Word8     -- message
                              -> CSize         -- message len
+                             -> Ptr Word8     -- salt
+                             -> CSize         -- salt len
                              -> Ptr SecretKey -- secret
                              -> Ptr PublicKey -- public
                              -> Ptr Signature -- signature
