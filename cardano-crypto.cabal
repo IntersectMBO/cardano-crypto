@@ -34,6 +34,8 @@ test-suite cardano-crypto-test
   main-is:             Spec.hs
   build-depends:       base
                      , bytestring
+                     , memory
+                     , cryptonite
                      , cardano-crypto
                      , tasty
                      , tasty-quickcheck
