@@ -47,6 +47,7 @@ import           Crypto.Number.ModArithmetic
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as B (reverse, append)
 import qualified Data.ByteArray as B hiding (append)
+import           GHC.Stack
 
 -- | Represent a scalar in the base field
 newtype Scalar = Scalar { unScalar :: ByteString }
@@ -58,6 +59,18 @@ newtype PointCompressed = PointCompressed { unPointCompressed :: ByteString }
 -- | Represent a signature
 newtype Signature = Signature { unSignature :: ByteString }
 
+newtype Fq = Fq { unFq :: Integer }
+newtype Fp = Fp { unFp :: Integer }
+
+{- for debugging
+fq :: HasCallStack => Integer -> Fq
+fq n
+    | n >= 0 && n < q = Fq n
+    | otherwise       = error "fq"
+-}
+
+fq :: Integer -> Fq
+fq = Fq
 
 -- Create a Ed25519 scalar
 --
@@ -90,7 +103,7 @@ sign a salt msg =
     r = sha512_modq (B.convert prefix `B.append` B.convert msg)
     pR = ePointCompress $ ePointMul r pG
     h = sha512_modq (unPointCompressed pR `B.append` unPointCompressed pA `B.append` B.convert msg)
-    s = (r + h * (fromBytes (unScalar a) `mod` p)) `mod` q
+    s = (unFq r + unFq h * (fromBytes (unScalar a))) `mod` q
 
 verify :: B.ByteArrayAccess msg => PointCompressed -> msg -> Signature -> Bool
 verify pA msg (Signature signature) =
@@ -98,7 +111,7 @@ verify pA msg (Signature signature) =
   where
     (pR, s) =
         let (sig0, sig1) = B.splitAt 32 signature
-         in (PointCompressed sig0, fromBytes sig1)
+         in (PointCompressed sig0, fq $ fromBytes sig1)
 
     pointEqual (ExtendedPoint pX pY pZ _) (ExtendedPoint qX qY qZ _) =
         ((pX * qZ - qX * pZ) `mod` p == 0) && ((pY * qZ - qY * pZ) `mod` p == 0)
@@ -109,11 +122,11 @@ verify pA msg (Signature signature) =
 
 -- | Add 2 scalar in the base field together
 scalarAdd :: Scalar -> Scalar -> Scalar
-scalarAdd (Scalar s1) (Scalar s2) = Scalar $ toBytes ((fromBytes s1 + fromBytes s2) `mod` p)
+scalarAdd (Scalar s1) (Scalar s2) = Scalar $ toBytes ((fromBytes s1 + fromBytes s2) `mod` q)
 
 -- | Create a scalar from integer. mainly for debugging purpose.
 scalarFromInteger :: Integer -> Scalar
-scalarFromInteger n = Scalar $ toBytes (n `mod` p)
+scalarFromInteger n = Scalar $ toBytes (n `mod` q)
 
 -- | Add 2 points together
 pointAdd :: PointCompressed -> PointCompressed -> PointCompressed
@@ -121,7 +134,7 @@ pointAdd p1 p2 = ePointCompress $ ePointAdd (ePointDecompress p1) (ePointDecompr
 
 -- | Lift a scalar to the curve, and returning a compressed point
 scalarToPoint :: Scalar -> PointCompressed
-scalarToPoint (Scalar sec) = ePointCompress $ ePointMul (fromBytes sec `mod` p) pG
+scalarToPoint (Scalar sec) = ePointCompress $ ePointMul (fq (fromBytes sec `mod` q)) pG
 
 -- | Point represented by (X, Y, Z, T) in extended twisted edward coordinates.
 --
@@ -144,8 +157,8 @@ ePointAdd (ExtendedPoint pX pY pZ pT) (ExtendedPoint qX qY qZ qT) =
     g = d+c
     h = b+a
 
-ePointMul :: Integer -> ExtendedPoint -> ExtendedPoint
-ePointMul s = loop 255 (ExtendedPoint 0 1 1 0)
+ePointMul :: Fq -> ExtendedPoint -> ExtendedPoint
+ePointMul (Fq s) = loop 255 (ExtendedPoint 0 1 1 0)
   where
     loop !i !acc !pP
         | i < 0       = pP `seq` acc
@@ -216,6 +229,6 @@ pG :: ExtendedPoint
     !g_y = (4 * modp_inv 5) `mod` p
     !g_x = recoverX g_y False
 
-sha512_modq :: B.ByteArrayAccess ba => ba -> Integer
+sha512_modq :: B.ByteArrayAccess ba => ba -> Fq
 sha512_modq bs =
-    fromBytes (B.convert (hash bs :: Digest SHA512)) `mod` q
+    Fq (fromBytes (B.convert (hash bs :: Digest SHA512)) `mod` q)
