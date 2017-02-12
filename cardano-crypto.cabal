@@ -17,6 +17,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Cardano.Crypto.Wallet
                        Crypto.ECC.Edwards25519
+                       Crypto.ECC.Ed25519Donna
   build-depends:       base >= 4.7 && < 5
                      , memory
                      , deepseq
@@ -24,6 +25,8 @@ library
                      , cryptonite
                      , cryptonite-openssl >= 0.5
   default-language:    Haskell2010
+  C-sources:           cbits/ed25519/ed25519.c
+  include-dirs:        cbits/ed25519 cbits
 
 test-suite cardano-crypto-test
   type:                exitcode-stdio-1.0
