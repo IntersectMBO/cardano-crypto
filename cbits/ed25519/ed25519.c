@@ -12,7 +12,7 @@
 #include "ed25519-randombytes.h"
 #include "ed25519-hash.h"
 
-#include <stdio.h>
+#define VARIANT_CODE
 
 /*
 	Generates a (extsk[0..31]) and aExt (extsk[32..63])
