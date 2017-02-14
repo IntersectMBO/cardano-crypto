@@ -21,6 +21,7 @@
 {-# LANGUAGE BangPatterns #-}
 module Cardano.Crypto.Wallet
     ( ChainCode(..)
+    , PassPhrase
     -- * Extended Private & Public types
     , XPrv
     , XPub
@@ -67,6 +68,8 @@ newtype XSignature = XSignature Edwards25519.Signature
 data DerivationType = DeriveHardened | DeriveNormal
     deriving (Show,Eq)
 
+type PassPhrase = String
+
 xprv :: ByteString -> Either String XPrv
 xprv bs
     | B.length bs /= 64 = Left ("error: xprv need to be 64 bytes: got " ++ show (B.length bs) ++ " bytes")
@@ -88,8 +91,8 @@ unXPub :: XPub -> ByteString
 unXPub (XPub pub (ChainCode cc)) = B.append (Edwards25519.unPointCompressed pub) cc
 
 -- | Generate extended public key from private key
-toXPub :: XPrv -> XPub
-toXPub (XPrv sec ccode) = XPub (Edwards25519.scalarToPoint sec) ccode
+toXPub :: PassPhrase -> XPrv -> XPub
+toXPub _ (XPrv sec ccode) = XPub (Edwards25519.scalarToPoint sec) ccode
 
 -- | Return the Ed25519 public key associated with a XPub context
 xPubGetPublicKey :: XPub -> Ed25519.PublicKey
@@ -97,11 +100,11 @@ xPubGetPublicKey (XPub pub _) =
     throwCryptoError $ Ed25519.publicKey $ Edwards25519.unPointCompressed pub
 
 -- | Derive a child extended private key from an extended private key
-deriveXPrv :: XPrv -> DerivationType -> Word32 -> XPrv
-deriveXPrv (XPrv sec ccode) DeriveHardened n =
+deriveXPrv :: PassPhrase -> XPrv -> DerivationType -> Word32 -> XPrv
+deriveXPrv _ (XPrv sec ccode) DeriveHardened n =
     let (iL, iR) = walletHash $ DerivationHashHardened sec ccode n
      in XPrv (Edwards25519.scalar iL) iR
-deriveXPrv (XPrv sec ccode) DeriveNormal n =
+deriveXPrv _ (XPrv sec ccode) DeriveNormal n =
     let !pub     = Edwards25519.scalarToPoint sec
         (iL, iR) = walletHash $ DerivationHashNormal pub ccode n
         !derived = Edwards25519.scalar iL
@@ -114,8 +117,8 @@ deriveXPub (XPub pub ccode) n =
         !derived = Edwards25519.scalarToPoint $ Edwards25519.scalar iL
      in XPub (Edwards25519.pointAdd pub derived) iR
 
-sign :: ByteArrayAccess msg => XPrv -> msg -> XSignature
-sign (XPrv priv (ChainCode cc)) ba =
+sign :: ByteArrayAccess msg => PassPhrase -> XPrv -> msg -> XSignature
+sign _ (XPrv priv (ChainCode cc)) ba =
     XSignature $ Edwards25519.sign priv cc ba
     {-
     let sec = throwCryptoError $ Ed25519.secretKey $ Edwards25519.unScalar priv
