@@ -14,6 +14,12 @@ import           Crypto.Error
 
 data Ed = Ed Integer Edwards25519.Scalar
 
+data Message = Message B.ByteString
+    deriving (Show,Eq)
+
+data Salt = Salt B.ByteString
+    deriving (Show,Eq)
+
 p :: Integer
 p = 2^(255 :: Int) - 19
 
@@ -32,6 +38,10 @@ instance Arbitrary Ed where
                 , (2, choose (1, q-1))
                 ]
         return (Ed n (Edwards25519.scalarFromInteger n))
+instance Arbitrary Message where
+    arbitrary = Message . B.pack <$> (choose (0, 10) >>= \n -> replicateM n arbitrary)
+instance Arbitrary Salt where
+    arbitrary = Salt . B.pack <$> (choose (0, 10) >>= \n -> replicateM n arbitrary)
 
 testEdwards25519 =
     [ testProperty "add" $ \(Ed _ a) (Ed _ b) -> (ltc a .+ ltc b) == ltc (Edwards25519.scalarAdd a b)
@@ -63,11 +73,21 @@ testHdDerivation =
          in verify cPub dummyMsg (sign cPrv dummyMsg)
 
 testVariant =
-    [ testProperty "public-key" $ \(Ed _ a) ->
+    [ testProperty "public-key" testPublicKey
+    --, testProperty "signature" testSignature
+    ]
+  where
+    testPublicKey (Ed _ a) =
         let pub = Edwards25519.unPointCompressed $ Edwards25519.scalarToPoint a
             (EdVariant.PublicKey pub2) = EdVariant.toPublic (throwCryptoError $ EdVariant.secretKey $ Edwards25519.unScalar a)
          in pub === B.convert pub2
-    ]
+    testSignature (Ed _ a) (Salt salt) (Message msg) =
+        let pub = Edwards25519.unPointCompressed $ Edwards25519.scalarToPoint a
+            sec = throwCryptoError $ EdVariant.secretKey $ Edwards25519.unScalar a
+            --(EdVariant.PublicKey pub2) = EdVariant.toPublic (throwCryptoError $ EdVariant.secretKey $ Edwards25519.unScalar a)
+            sig1 = Edwards25519.sign a salt msg
+            sig2 = EdVariant.sign sec salt (EdVariant.toPublic sec) msg
+         in Edwards25519.unSignature sig1 === B.convert sig2
 
 main :: IO ()
 main = defaultMain $ testGroup "cardano-crypto"
