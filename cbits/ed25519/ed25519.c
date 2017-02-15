@@ -74,7 +74,11 @@ ED25519_FN(ed25519_sign) (const unsigned char *m, size_t mlen, const unsigned ch
 
 	/* r = H(aExt[32..64], m) */
 	ed25519_hash_init(&ctx);
+#ifdef VARIANT_CODE
+	ed25519_hash_update(&ctx, extsk, 64);
+#else
 	ed25519_hash_update(&ctx, extsk + 32, 32);
+#endif
 	ed25519_hash_update(&ctx, m, mlen);
 	ed25519_hash_final(&ctx, hashr);
 	expand256_modm(r, hashr, 64);
