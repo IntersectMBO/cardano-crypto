@@ -54,7 +54,6 @@ ED25519_FN(ed25519_publickey) (const ed25519_secret_key sk, ed25519_public_key p
 	ge25519_pack(pk, &A);
 }
 
-
 void
 ED25519_FN(ed25519_sign) (const unsigned char *m, size_t mlen, const unsigned char *salt, size_t slen, const ed25519_secret_key sk, const ed25519_public_key pk, ed25519_signature RS) {
 	ed25519_hash_context ctx;
@@ -131,5 +130,14 @@ ED25519_FN(ed25519_sign_open) (const unsigned char *m, size_t mlen, const ed2551
 	return ed25519_verify(RS, checkR, 32) ? 0 : -1;
 }
 
+int
+ED25519_FN(ed25519_scalar_add) (const ed25519_secret_key sk1, const ed25519_secret_key sk2, ed25519_secret_key res)
+{
+	return 0;
+}
 
+int
+ED25519_FN(ed25519_point_add) (const ed25519_public_key pk1, const ed25519_public_key pk2, ed25519_public_key res)
+{
+	return 0;
 }
