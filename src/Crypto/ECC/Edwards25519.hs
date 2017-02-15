@@ -47,7 +47,6 @@ import           Crypto.Number.ModArithmetic
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as B (reverse, append)
 import qualified Data.ByteArray as B hiding (append)
-import           GHC.Stack
 
 -- | Represent a scalar in the base field
 newtype Scalar = Scalar { unScalar :: ByteString }
