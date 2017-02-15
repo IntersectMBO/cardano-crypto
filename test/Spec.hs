@@ -77,19 +77,46 @@ testHdDerivation =
 testVariant =
     [ testProperty "public-key" testPublicKey
     , testProperty "signature" testSignature
+    , testProperty "scalar-add" testScalarAdd
+    -- , testProperty "point-add" testPointAdd
     ]
   where
     testPublicKey (Ed _ a) =
-        let pub = Edwards25519.unPointCompressed $ Edwards25519.scalarToPoint a
-            (EdVariant.PublicKey pub2) = EdVariant.toPublic (throwCryptoError $ EdVariant.secretKey $ Edwards25519.unScalar a)
-         in pub === B.convert pub2
+        let pub1 = Edwards25519.scalarToPoint a
+            pub2 = EdVariant.toPublic (scalarToSecret a)
+         in pub1 `pointEqPublic` pub2
     testSignature (Ed _ a) (Salt salt) (Message msg) =
-        let pub = Edwards25519.unPointCompressed $ Edwards25519.scalarToPoint a
-            sec = throwCryptoError $ EdVariant.secretKey $ Edwards25519.unScalar a
-            --(EdVariant.PublicKey pub2) = EdVariant.toPublic (throwCryptoError $ EdVariant.secretKey $ Edwards25519.unScalar a)
+        let -- pub = Edwards25519.unPointCompressed $ Edwards25519.scalarToPoint a
+            sec = scalarToSecret a
             sig1 = Edwards25519.sign a salt msg
             sig2 = EdVariant.sign sec salt (EdVariant.toPublic sec) msg
-         in Edwards25519.unSignature sig1 === B.convert sig2
+         in sig1 `signatureEqSig` sig2
+    testScalarAdd (Ed _ a) (Ed _ b) =
+        let r1 = Edwards25519.scalarAdd a b
+            r2 = EdVariant.secretAdd (scalarToSecret a) (scalarToSecret b)
+         in r1 `scalarEqSecret` r2
+    testPointAdd (Ed _ a) (Ed _ b) =
+        let p = Edwards25519.scalarToPoint a
+            q = Edwards25519.scalarToPoint b
+            p' = EdVariant.toPublic $ scalarToSecret a
+            q' = EdVariant.toPublic $ scalarToSecret b
+         in Edwards25519.pointAdd p q `pointEqPublic` EdVariant.publicAdd p' q' -- (pointToPublic p) (pointToPublic q)
+
+    signatureEqSig :: Edwards25519.Signature -> EdVariant.Signature -> Property
+    signatureEqSig sig sig2 = Edwards25519.unSignature sig === B.convert sig2
+
+    pointEqPublic :: Edwards25519.PointCompressed -> EdVariant.PublicKey -> Property
+    pointEqPublic pub (EdVariant.PublicKey pub2) = Edwards25519.unPointCompressed pub === B.convert pub2
+
+    scalarEqSecret :: Edwards25519.Scalar -> EdVariant.SecretKey -> Property
+    scalarEqSecret s sec = Edwards25519.unScalar s === B.convert sec
+
+    pointToPublic :: Edwards25519.PointCompressed -> EdVariant.PublicKey
+    pointToPublic = throwCryptoError . EdVariant.publicKey . Edwards25519.unPointCompressed
+
+    scalarToSecret :: Edwards25519.Scalar -> EdVariant.SecretKey
+    scalarToSecret = throwCryptoError . EdVariant.secretKey . Edwards25519.unScalar
+
 
 main :: IO ()
 main = defaultMain $ testGroup "cardano-crypto"

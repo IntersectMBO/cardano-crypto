@@ -21,6 +21,8 @@ module Crypto.ECC.Ed25519Donna
     , toPublic
     , sign
     , verify
+    , publicAdd
+    , secretAdd
     ) where
 
 import           Control.DeepSeq
@@ -80,11 +82,25 @@ signature bs
 
 -- | Create a public key from a secret key
 toPublic :: SecretKey -> PublicKey
-toPublic (SecretKey sec) = PublicKey <$>
+toPublic (SecretKey sec) = PublicKey $
     B.allocAndFreeze publicKeySize $ \result ->
     withByteArray sec              $ \psec   ->
         ccryptonite_ed25519_publickey psec result
 {-# NOINLINE toPublic #-}
+
+publicAdd :: PublicKey -> PublicKey -> PublicKey
+publicAdd p1 p2 =
+    PublicKey $ B.allocAndFreeze publicKeySize $ \result ->
+        withByteArray p1 $ \v1 ->
+        withByteArray p2 $ \v2 ->
+            ccryptonite_ed25519_point_add v1 v2 result
+
+secretAdd :: SecretKey -> SecretKey -> SecretKey
+secretAdd p1 p2 =
+    SecretKey $ B.allocAndFreeze secretKeySize $ \result ->
+        withByteArray p1 $ \v1 ->
+        withByteArray p2 $ \v2 ->
+            ccryptonite_ed25519_scalar_add v1 v2 result
 
 -- | Sign a message using the key pair
 sign :: (ByteArrayAccess msg, ByteArrayAccess salt) => SecretKey -> salt -> PublicKey -> msg -> Signature
@@ -140,3 +156,15 @@ foreign import ccall "cardano_crypto_ed25519_sign"
                              -> Ptr PublicKey -- public
                              -> Ptr Signature -- signature
                              -> IO ()
+
+foreign import ccall "cardano_crypto_ed25519_point_add"
+    ccryptonite_ed25519_point_add :: Ptr PublicKey -- p1
+                                  -> Ptr PublicKey -- p2
+                                  -> Ptr PublicKey -- p1 + p2
+                                  -> IO ()
+
+foreign import ccall "cardano_crypto_ed25519_scalar_add"
+    ccryptonite_ed25519_scalar_add :: Ptr SecretKey -- s1
+                                   -> Ptr SecretKey -- s2
+                                   -> Ptr SecretKey -- s1 + s2
+                                   -> IO ()

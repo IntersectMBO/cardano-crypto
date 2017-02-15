@@ -133,11 +133,26 @@ ED25519_FN(ed25519_sign_open) (const unsigned char *m, size_t mlen, const ed2551
 int
 ED25519_FN(ed25519_scalar_add) (const ed25519_secret_key sk1, const ed25519_secret_key sk2, ed25519_secret_key res)
 {
+	bignum256modm s1, s2;
+	expand256_modm(s1, sk1, 32);
+	expand256_modm(s2, sk2, 32);
+	add256_modm(s1, s1, s2);
+	contract256_modm(res, s1);
 	return 0;
 }
 
 int
 ED25519_FN(ed25519_point_add) (const ed25519_public_key pk1, const ed25519_public_key pk2, ed25519_public_key res)
 {
+	ge25519 ALIGN(16) R, P, Q;
+
+	if (!ge25519_unpack_negative_vartime(&P, pk1))
+		return -1;
+	if (!ge25519_unpack_negative_vartime(&Q, pk2))
+		return -1;
+
+	ge25519_add(&R, &P, &Q);
+	ge25519_pack(res, &R);
+
 	return 0;
 }
