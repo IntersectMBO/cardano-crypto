@@ -19,6 +19,8 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Cardano.Crypto.Wallet
     ( ChainCode(..)
     , PassPhrase
@@ -27,6 +29,7 @@ module Cardano.Crypto.Wallet
     , XPub
     , XSignature
     , DerivationType(..)
+    , generate
     , xprv
     , xpub
     , unXPrv
@@ -49,9 +52,9 @@ import qualified Crypto.MAC.HMAC as HMAC
 import           Crypto.Error (throwCryptoError)
 import           Data.Word
 import           Data.ByteString (ByteString)
-import qualified Data.ByteString as B (splitAt, length, pack)
+import qualified Data.ByteString as B (pack)
 import           Data.ByteArray (ByteArrayAccess, convert)
-import qualified Data.ByteArray as B (append)
+import qualified Data.ByteArray as B (splitAt, length, append)
 
 import Debug.Trace
 
@@ -70,11 +73,21 @@ data DerivationType = DeriveHardened | DeriveNormal
 
 type PassPhrase = String
 
-xprv :: ByteString -> Either String XPrv
+generate :: ByteArrayAccess seed => seed -> PassPhrase -> Maybe XPrv
+generate seed passPhrase
+    | B.length seed < 32 = Nothing
+    | otherwise          =
+        let (iL, iR) = hFinalize
+                     $ flip HMAC.update ("Root Seed Chain" :: ByteString)
+                     $ hInitSeed seed
+         in Just $ XPrv (Edwards25519.scalar iL) iR
+
+-- | Simple constructor
+xprv :: ByteArrayAccess bin => bin -> Either String XPrv
 xprv bs
     | B.length bs /= 64 = Left ("error: xprv need to be 64 bytes: got " ++ show (B.length bs) ++ " bytes")
     | otherwise         =
-        let (b1, b2) = B.splitAt 32 bs
+        let (b1, b2) = B.splitAt 32 $ convert bs
          in Right $ XPrv (Edwards25519.scalar b1) (ChainCode b2)
 
 unXPrv :: XPrv -> ByteString
@@ -85,7 +98,7 @@ xpub bs
     | B.length bs /= 64 = Left ("error: xprv need to be 64 bytes: got " ++ show (B.length bs) ++ " bytes")
     | otherwise         =
         let (b1, b2) = B.splitAt 32 bs
-         in Right $ XPub (Edwards25519.pointCompressed b1) (ChainCode b2)
+         in Right $ XPub (Edwards25519.pointCompressed b1) (ChainCode $ convert b2)
 
 unXPub :: XPub -> ByteString
 unXPub (XPub pub (ChainCode cc)) = B.append (Edwards25519.unPointCompressed pub) cc
@@ -166,6 +179,9 @@ encodeIndex w = B.pack [d,c,b,a]
 
 hInit :: ChainCode -> HMAC.Context SHA512
 hInit (ChainCode key) = HMAC.initialize key
+
+hInitSeed :: ByteArrayAccess seed => seed -> HMAC.Context SHA512
+hInitSeed seed = HMAC.initialize seed
 
 hFinalize :: HMAC.Context SHA512 -> (ByteString, ChainCode)
 hFinalize ctx =
