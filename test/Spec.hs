@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import           Control.Monad
@@ -12,6 +13,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteArray as B (convert)
 import           Crypto.Error
 
+noPassphrase :: B.ByteString
 noPassphrase = ""
 
 data Ed = Ed Integer Edwards25519.Scalar
@@ -62,15 +64,15 @@ testHdDerivation =
 
     normalDerive (Ed _ s) n =
         let prv = either error id $ xprv (Edwards25519.unScalar s `B.append` dummyChainCode)
-            pub = toXPub noPassphrase prv
-            cPrv = deriveXPrv noPassphrase prv DeriveNormal n
+            pub = toXPub prv
+            cPrv = deriveXPrv noPassphrase prv n
             cPub = deriveXPub pub n
-         in unXPub (toXPub noPassphrase cPrv) === unXPub cPub
+         in unXPub (toXPub cPrv) === unXPub cPub
 
     verifyDerive (Ed _ s) n =
         let prv = either error id $ xprv (Edwards25519.unScalar s `B.append` dummyChainCode)
-            pub = toXPub noPassphrase prv
-            cPrv = deriveXPrv noPassphrase prv DeriveNormal n
+            pub = toXPub prv
+            cPrv = deriveXPrv noPassphrase prv n
             cPub = deriveXPub pub n
          in verify cPub dummyMsg (sign noPassphrase cPrv dummyMsg)
 
