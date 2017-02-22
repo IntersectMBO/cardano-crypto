@@ -23,12 +23,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Cardano.Crypto.Wallet
     ( ChainCode(..)
-    , PassPhrase
     -- * Extended Private & Public types
     , XPrv
     , XPub
     , XSignature
-    , DerivationType(..)
     , generate
     , xprv
     , xpub
@@ -37,6 +35,7 @@ module Cardano.Crypto.Wallet
     , toXPub
     , xPubGetPublicKey
     -- * Derivation function
+    , deriveXPrvHardened
     , deriveXPrv
     , deriveXPub
     -- * Signature & Verification from extended types
@@ -68,12 +67,10 @@ data XPub = XPub !Edwards25519.PointCompressed !ChainCode
 
 newtype XSignature = XSignature Edwards25519.Signature
 
-data DerivationType = DeriveHardened | DeriveNormal
-    deriving (Show,Eq)
-
-type PassPhrase = String
-
-generate :: ByteArrayAccess seed => seed -> PassPhrase -> Maybe XPrv
+generate :: (ByteArrayAccess passPhrase, ByteArrayAccess seed)
+         => seed
+         -> passPhrase
+         -> Maybe XPrv
 generate seed passPhrase
     | B.length seed < 32 = Nothing
     | otherwise          =
@@ -104,20 +101,22 @@ unXPub :: XPub -> ByteString
 unXPub (XPub pub (ChainCode cc)) = B.append (Edwards25519.unPointCompressed pub) cc
 
 -- | Generate extended public key from private key
-toXPub :: PassPhrase -> XPrv -> XPub
-toXPub _ (XPrv sec ccode) = XPub (Edwards25519.scalarToPoint sec) ccode
+toXPub :: XPrv -> XPub
+toXPub (XPrv sec ccode) = XPub (Edwards25519.scalarToPoint sec) ccode
 
 -- | Return the Ed25519 public key associated with a XPub context
 xPubGetPublicKey :: XPub -> Ed25519.PublicKey
 xPubGetPublicKey (XPub pub _) =
     throwCryptoError $ Ed25519.publicKey $ Edwards25519.unPointCompressed pub
 
--- | Derive a child extended private key from an extended private key
-deriveXPrv :: PassPhrase -> XPrv -> DerivationType -> Word32 -> XPrv
-deriveXPrv _ (XPrv sec ccode) DeriveHardened n =
+deriveXPrvHardened :: ByteArrayAccess passPhrase => passPhrase -> XPrv -> Word32 -> XPrv
+deriveXPrvHardened _ (XPrv sec ccode) n =
     let (iL, iR) = walletHash $ DerivationHashHardened sec ccode n
      in XPrv (Edwards25519.scalar iL) iR
-deriveXPrv _ (XPrv sec ccode) DeriveNormal n =
+
+-- | Derive a child extended private key from an extended private key
+deriveXPrv :: ByteArrayAccess passPhrase => passPhrase -> XPrv -> Word32 -> XPrv
+deriveXPrv _ (XPrv sec ccode) n =
     let !pub     = Edwards25519.scalarToPoint sec
         (iL, iR) = walletHash $ DerivationHashNormal pub ccode n
         !derived = Edwards25519.scalar iL
@@ -130,7 +129,11 @@ deriveXPub (XPub pub ccode) n =
         !derived = Edwards25519.scalarToPoint $ Edwards25519.scalar iL
      in XPub (Edwards25519.pointAdd pub derived) iR
 
-sign :: ByteArrayAccess msg => PassPhrase -> XPrv -> msg -> XSignature
+sign :: (ByteArrayAccess passPhrase, ByteArrayAccess msg)
+     => passPhrase
+     -> XPrv
+     -> msg
+     -> XSignature
 sign _ (XPrv priv (ChainCode cc)) ba =
     XSignature $ Edwards25519.sign priv cc ba
     {-
