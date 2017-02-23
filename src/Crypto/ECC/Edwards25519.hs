@@ -47,6 +47,7 @@ import           Crypto.Number.ModArithmetic
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as B (reverse, append)
 import qualified Data.ByteArray as B hiding (append)
+import           GHC.Stack
 
 -- | Represent a scalar in the base field
 newtype Scalar = Scalar { unScalar :: ByteString }
@@ -83,9 +84,9 @@ scalar bs
 -- | Smart constructor to create a compress point binary
 --
 -- Check if the length is of expected size
-pointCompressed :: ByteString -> PointCompressed
+pointCompressed :: HasCallStack => ByteString -> PointCompressed
 pointCompressed bs
-    | B.length bs /= 32 = error "invalid compressed point"
+    | B.length bs /= 32 = error ("invalid compressed point: expecting 32 bytes, got " ++ show (B.length bs) ++ " bytes")
     | otherwise         = PointCompressed bs
 
 -- | Create a signature using a variant of ED25519 signature
@@ -121,7 +122,9 @@ verify pA msg (Signature signature) =
 
 -- | Add 2 scalar in the base field together
 scalarAdd :: Scalar -> Scalar -> Scalar
-scalarAdd (Scalar s1) (Scalar s2) = Scalar $ toBytes ((fromBytes s1 + fromBytes s2) `mod` q)
+scalarAdd (Scalar s1) (Scalar s2) = Scalar $ toBytes r
+  where
+    r = (fromBytes s1 + fromBytes s2) `mod` q
 
 -- | Create a scalar from integer. mainly for debugging purpose.
 scalarFromInteger :: Integer -> Scalar
