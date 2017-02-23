@@ -139,11 +139,10 @@ void wallet_encrypted_derive_normal
 	uint8_t idxBuf[4];
 	uint8_t hmac_out[64];
 
-
-	idxBuf[0] = index;
-	idxBuf[1] = index >> 8;
-	idxBuf[2] = index >> 16;
-	idxBuf[3] = index >> 24;
+	idxBuf[0] = index >> 24;
+	idxBuf[1] = index >> 16;
+	idxBuf[2] = index >> 8;
+	idxBuf[3] = index;
 
 	HMAC_sha512_init(&hmac_ctx, in->cc, CHAIN_CODE_SIZE);
 	HMAC_sha512_update(&hmac_ctx, "NORM", 4);
@@ -172,10 +171,10 @@ void wallet_encrypted_derive_hardened
 	uint8_t idxBuf[4];
 	uint8_t hmac_out[64];
 
-	idxBuf[0] = index;
-	idxBuf[1] = index >> 8;
-	idxBuf[2] = index >> 16;
-	idxBuf[3] = index >> 24;
+	idxBuf[0] = index >> 24;
+	idxBuf[1] = index >> 16;
+	idxBuf[2] = index >> 8;
+	idxBuf[3] = index;
 
 	HMAC_sha512_init(&hmac_ctx, in->cc, CHAIN_CODE_SIZE);
 	HMAC_sha512_update(&hmac_ctx, "HARD", 4);
