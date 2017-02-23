@@ -1,11 +1,15 @@
 module Cardano.Crypto.Wallet.Encrypted
     ( EncryptedKey
     , encryptedKey
+    , unEncryptedKey
+    , Signature(..)
     -- * Methods
     , encryptedCreate
     , encryptedSign
     , encryptedPublic
     , encryptedChainCode
+    , encryptedDeriveNormal
+    , encryptedDeriveHardened
     ) where
 
 import           Control.DeepSeq
@@ -54,6 +58,9 @@ encryptedKey ba
     | B.length ba == totalKeySize = Just $ EncryptedKey ba
     | otherwise                   = Nothing
 
+unEncryptedKey :: EncryptedKey -> ByteString
+unEncryptedKey (EncryptedKey e) = e
+
 -- | Create a new encrypted key from the secret, encrypting the secret in memory
 -- using the passphrase.
 encryptedCreate :: (ByteArrayAccess passphrase, ByteArrayAccess secret, ByteArrayAccess cc)
@@ -61,7 +68,7 @@ encryptedCreate :: (ByteArrayAccess passphrase, ByteArrayAccess secret, ByteArra
                 -> passphrase
                 -> cc
                 -> EncryptedKey
-encryptedCreate sec pass cc = EncryptedKey $ B.allocAndFreeze encryptedKeySize $ \ekey ->
+encryptedCreate sec pass cc = EncryptedKey $ B.allocAndFreeze totalKeySize $ \ekey ->
     withByteArray sec  $ \psec  ->
     withByteArray pass $ \ppass ->
     withByteArray cc   $ \pcc   ->
@@ -87,7 +94,7 @@ encryptedDeriveNormal :: (ByteArrayAccess passphrase)
                       -> Word32
                       -> EncryptedKey
 encryptedDeriveNormal (EncryptedKey parent) pass childIndex =
-    EncryptedKey $ B.allocAndFreeze encryptedKeySize $ \ekey ->
+    EncryptedKey $ B.allocAndFreeze totalKeySize $ \ekey ->
         withByteArray pass   $ \ppass   ->
         withByteArray parent $ \pparent ->
             wallet_encrypted_derive_normal pparent ppass (fromIntegral $ B.length pass) childIndex ekey
@@ -98,7 +105,7 @@ encryptedDeriveHardened :: ByteArrayAccess passphrase
                         -> Word32
                         -> EncryptedKey
 encryptedDeriveHardened (EncryptedKey parent) pass childIndex =
-    EncryptedKey $ B.allocAndFreeze encryptedKeySize $ \ekey ->
+    EncryptedKey $ B.allocAndFreeze totalKeySize $ \ekey ->
         withByteArray pass   $ \ppass   ->
         withByteArray parent $ \pparent ->
             wallet_encrypted_derive_hardened pparent ppass (fromIntegral $ B.length pass) childIndex ekey
