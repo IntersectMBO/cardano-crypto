@@ -17,6 +17,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Cardano.Crypto.Wallet
                        Cardano.Crypto.Wallet.Encrypted
+                       Cardano.Crypto.Wallet.Types
                        Crypto.ECC.Edwards25519
                        Crypto.ECC.Ed25519Donna
   build-depends:       base >= 4.7 && < 5

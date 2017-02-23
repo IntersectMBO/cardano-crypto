@@ -56,9 +56,8 @@ import           Data.ByteArray (ByteArrayAccess, convert)
 import qualified Data.ByteArray as B (splitAt, length, append)
 
 import Debug.Trace
+import           Cardano.Crypto.Wallet.Types
 
-newtype ChainCode = ChainCode ByteString
-    deriving (Show,Eq)
 
 data XPrv = XPrv !Edwards25519.Scalar !ChainCode
 
