@@ -41,14 +41,11 @@ instance Eq Ed where
     (Ed x _) == (Ed y _) = x == y
 instance Arbitrary Ed where
     arbitrary = do
-        n <- return 9
-        {-
         n <- frequency
                 [ (1, choose (q - 10000, q-1))
                 , (1, choose (1, 1000))
                 , (2, choose (1, q-1))
                 ]
-        -}
         return (Ed n (Edwards25519.scalarFromInteger n))
 instance Arbitrary Message where
     arbitrary = Message . B.pack <$> (choose (0, 10) >>= \n -> replicateM n arbitrary)
