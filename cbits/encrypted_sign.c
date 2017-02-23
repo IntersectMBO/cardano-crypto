@@ -90,7 +90,7 @@ void wallet_encrypted_to_public
 	unencrypt_stop(priv_key);
 }
 
-void wallet_create_encrypted_from_secret
+void wallet_encrypted_from_secret
     (uint8_t const *pass, uint32_t const pass_len,
      ed25519_secret_key secret_key,
      const uint8_t cc[CHAIN_CODE_SIZE],
@@ -155,7 +155,7 @@ void wallet_encrypted_derive_normal
 	cardano_crypto_ed25519_scalar_add(priv_key, hmac_out, res_key);
 	unencrypt_stop(priv_key);
 
-	wallet_create_encrypted_from_secret(pass, pass_len, res_key, hmac_out + 32, out);
+	wallet_encrypted_from_secret(pass, pass_len, res_key, hmac_out + 32, out);
 	clear(res_key, ENCRYPTED_KEY_SIZE);
 	clear(hmac_out, 64);
 }
@@ -186,6 +186,6 @@ void wallet_encrypted_derive_hardened
 	HMAC_sha512_update(&hmac_ctx, idxBuf, 4);
 	HMAC_sha512_final(&hmac_ctx, hmac_out);
 
-	wallet_create_encrypted_from_secret(pass, pass_len, hmac_out, hmac_out + 32, out);
+	wallet_encrypted_from_secret(pass, pass_len, hmac_out, hmac_out + 32, out);
 	clear(hmac_out, 64);
 }
