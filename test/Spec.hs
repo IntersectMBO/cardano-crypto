@@ -9,6 +9,8 @@ import           Test.Tasty.QuickCheck
 import qualified Crypto.ECC.Edwards25519 as Edwards25519
 import qualified Crypto.ECC.Ed25519Donna as EdVariant
 import           Cardano.Crypto.Wallet
+import           Cardano.Crypto.Wallet.Encrypted
+import qualified Cardano.Crypto.Wallet.Pure as PureWallet
 import qualified Data.ByteString as B
 import qualified Data.ByteArray as B (convert)
 import           Crypto.Error
@@ -16,12 +18,15 @@ import           Crypto.Error
 noPassphrase :: B.ByteString
 noPassphrase = ""
 
+dummyPassphrase :: B.ByteString
+dummyPassphrase = "dummy passphrase"
+
 data Ed = Ed Integer Edwards25519.Scalar
 
-data Message = Message B.ByteString
+newtype Message = Message B.ByteString
     deriving (Show,Eq)
 
-data Salt = Salt B.ByteString
+newtype Salt = Salt B.ByteString
     deriving (Show,Eq)
 
 p :: Integer
@@ -36,11 +41,14 @@ instance Eq Ed where
     (Ed x _) == (Ed y _) = x == y
 instance Arbitrary Ed where
     arbitrary = do
+        n <- return 9
+        {-
         n <- frequency
                 [ (1, choose (q - 10000, q-1))
                 , (1, choose (1, 1000))
                 , (2, choose (1, q-1))
                 ]
+        -}
         return (Ed n (Edwards25519.scalarFromInteger n))
 instance Arbitrary Message where
     arbitrary = Message . B.pack <$> (choose (0, 10) >>= \n -> replicateM n arbitrary)
@@ -63,18 +71,60 @@ testHdDerivation =
     dummyMsg = B.pack [1,2,3,4,5,6,7]
 
     normalDerive (Ed _ s) n =
-        let prv = either error id $ xprv (Edwards25519.unScalar s `B.append` dummyChainCode)
+        let pubKey = Edwards25519.scalarToPoint s
+            prv = either error id $ xprv (Edwards25519.unScalar s `B.append` Edwards25519.unPointCompressed pubKey `B.append` dummyChainCode)
             pub = toXPub prv
             cPrv = deriveXPrv noPassphrase prv n
             cPub = deriveXPub pub n
          in unXPub (toXPub cPrv) === unXPub cPub
 
     verifyDerive (Ed _ s) n =
-        let prv = either error id $ xprv (Edwards25519.unScalar s `B.append` dummyChainCode)
+        let pubKey = Edwards25519.scalarToPoint s
+            prv = either error id $ xprv (Edwards25519.unScalar s `B.append` Edwards25519.unPointCompressed pubKey `B.append` dummyChainCode)
             pub = toXPub prv
             cPrv = deriveXPrv noPassphrase prv n
             cPub = deriveXPub pub n
          in verify cPub dummyMsg (sign noPassphrase cPrv dummyMsg)
+
+testEncrypted =
+    [ testProperty "pub(sec) = pub(encrypted(no-pass, sec))" (pubEq noPassphrase)
+    , testProperty "pub(sec) = pub(encrypted(dummy, sec))" (pubEq dummyPassphrase)
+    , testProperty "sign(sec, msg) = sign(encrypted(no-pass, sec), msg)" (signEq noPassphrase)
+    , testProperty "sign(sec, msg) = sign(encrypted(dummy, sec), msg)" (signEq dummyPassphrase)
+    , testProperty "derive-hard(sec, n) = derive-hard(encrypted(no-pass, sec), n)" (deriveEq True noPassphrase)
+    , testProperty "derive-hard(sec, n) = derive-hard(encrypted(dummy, sec), n)" (deriveEq True dummyPassphrase)
+    , testProperty "derive-norm(sec, n) = derive-norm(encrypted(no-pass, sec), n)" (deriveEq False noPassphrase)
+    , testProperty "derive-norm(sec, n) = derive-norm(encrypted(dummy, sec), n)" (deriveEq False dummyPassphrase)
+    ]
+  where
+    dummyChainCode = B.replicate 32 38
+    pubEq pass (Ed _ s) =
+        let a    = scalarToSecret s
+            pub1 = EdVariant.toPublic a
+            ekey = encryptedCreate a pass dummyChainCode
+         in B.convert pub1 === encryptedPublic ekey
+
+    signEq pass (Ed _ s) (Message msg) =
+        let a    = scalarToSecret s
+            pub1 = EdVariant.toPublic a
+            ekey = encryptedCreate a pass dummyChainCode
+            sig1 = EdVariant.sign a dummyChainCode pub1 msg
+            (Signature sig2) = encryptedSign ekey pass msg
+         in B.convert sig1 === sig2
+    deriveEq True pass (Ed _ s) n =
+        let a     = scalarToSecret s
+            xprv1 = PureWallet.XPrv s (ChainCode dummyChainCode)
+            cprv1 = PureWallet.deriveXPrvHardened xprv1 n
+            xprv2 = encryptedCreate a pass dummyChainCode
+            cprv2 = encryptedDeriveHardened xprv2 pass n
+         in PureWallet.xprvPub cprv1 === encryptedPublic cprv2
+    deriveEq False pass (Ed _ s) n =
+        let a     = scalarToSecret s
+            xprv1 = PureWallet.XPrv s (ChainCode dummyChainCode)
+            cprv1 = PureWallet.deriveXPrv xprv1 n
+            xprv2 = encryptedCreate a pass dummyChainCode
+            cprv2 = encryptedDeriveNormal xprv2 pass n
+         in PureWallet.xprvPub cprv1 === encryptedPublic cprv2
 
 testVariant =
     [ testProperty "public-key" testPublicKey
@@ -113,16 +163,17 @@ testVariant =
     scalarEqSecret :: Edwards25519.Scalar -> EdVariant.SecretKey -> Property
     scalarEqSecret s sec = Edwards25519.unScalar s === B.convert sec
 
-    pointToPublic :: Edwards25519.PointCompressed -> EdVariant.PublicKey
-    pointToPublic = throwCryptoError . EdVariant.publicKey . Edwards25519.unPointCompressed
+pointToPublic :: Edwards25519.PointCompressed -> EdVariant.PublicKey
+pointToPublic = throwCryptoError . EdVariant.publicKey . Edwards25519.unPointCompressed
 
-    scalarToSecret :: Edwards25519.Scalar -> EdVariant.SecretKey
-    scalarToSecret = throwCryptoError . EdVariant.secretKey . Edwards25519.unScalar
+scalarToSecret :: Edwards25519.Scalar -> EdVariant.SecretKey
+scalarToSecret = throwCryptoError . EdVariant.secretKey . Edwards25519.unScalar
 
 
 main :: IO ()
 main = defaultMain $ testGroup "cardano-crypto"
     [ testGroup "edwards25519-arithmetic" testEdwards25519
     , testGroup "edwards25519-ed25519variant" testVariant
+    , testGroup "encrypted" testEncrypted
     , testGroup "hd-derivation" testHdDerivation
     ]
