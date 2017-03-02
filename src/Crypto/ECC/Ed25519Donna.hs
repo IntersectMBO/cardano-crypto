@@ -60,16 +60,10 @@ publicKey bs
 -- | Try to build a secret key from a bytearray
 secretKey :: ByteArrayAccess ba => ba -> CryptoFailable SecretKey
 secretKey bs
-    | B.length bs == secretKeySize = unsafeDoIO $ withByteArray bs initialize
+    | B.length bs == secretKeySize = unsafePerformIO $ withByteArray bs initialize
     | otherwise                    = CryptoFailed CryptoError_SecretKeyStructureInvalid
   where
-        initialize inp = do
-            valid <- isValidPtr inp
-            if valid
-                then (CryptoPassed . SecretKey) <$> B.copy bs (\_ -> return ())
-                else return $ CryptoFailed CryptoError_SecretKeyStructureInvalid
-        isValidPtr _ =
-            return True
+        initialize inp = CryptoPassed . SecretKey <$> B.copy bs (\_ -> return ())
 {-# NOINLINE secretKey #-}
 
 -- | Try to build a signature from a bytearray
