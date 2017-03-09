@@ -19,6 +19,9 @@
   {                                                                           \
     /* Prepare key: */                                                        \
     uint8_t k[_blocksz];                                                      \
+    uint8_t blk_inner[_blocksz];                                              \
+    uint8_t blk_outer[_blocksz];                                              \
+    size_t i;                                                                 \
                                                                               \
     /* Shorten long keys. */                                                  \
     if (nkey > _blocksz)                                                      \
@@ -41,10 +44,7 @@
       memset(k + nkey, 0, _blocksz - nkey);                                   \
                                                                               \
     /* Start inner hash computation */                                        \
-    uint8_t blk_inner[_blocksz];                                              \
-    uint8_t blk_outer[_blocksz];                                              \
-                                                                              \
-    for (size_t i = 0; i < _blocksz; i++)                                     \
+    for (i = 0; i < _blocksz; i++)                                            \
     {                                                                         \
       blk_inner[i] = 0x36 ^ k[i];                                             \
       blk_outer[i] = 0x5c ^ k[i];                                             \
