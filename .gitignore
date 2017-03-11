@@ -4,3 +4,4 @@
 *.mix
 .stack-work
 dist
+.dir-locals.el

@@ -1,8 +1,9 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Cardano.Crypto.Wallet.Pure
     ( XPrv(..)
     , XPub(..)
@@ -14,25 +15,31 @@ module Cardano.Crypto.Wallet.Pure
     , hFinalize
     ) where
 
-import           Crypto.OpenSSL.Random (randBytes)
-import qualified Crypto.PubKey.Ed25519 as Ed25519
-import qualified Crypto.ECC.Edwards25519 as Edwards25519
-import           Crypto.Hash (SHA512, hash)
-import qualified Crypto.MAC.HMAC as HMAC
-import           Crypto.Error (throwCryptoError)
-import           Data.Word
-import           Data.ByteString (ByteString)
-import qualified Data.ByteString as B (pack)
-import           Data.ByteArray (ByteArrayAccess, convert)
-import qualified Data.ByteArray as B (splitAt, length, append)
+import           Control.DeepSeq             (NFData)
+import qualified Crypto.ECC.Edwards25519     as Edwards25519
+import           Crypto.Error                (throwCryptoError)
+import           Crypto.Hash                 (SHA512, hash)
+import qualified Crypto.MAC.HMAC             as HMAC
+import           Crypto.OpenSSL.Random       (randBytes)
+import qualified Crypto.PubKey.Ed25519       as Ed25519
 import           Data.Bits
+import           Data.ByteArray              (ByteArrayAccess, convert)
+import qualified Data.ByteArray              as B (append, length, splitAt)
+import           Data.ByteString             (ByteString)
+import qualified Data.ByteString             as B (pack)
+import           Data.Hashable               (Hashable)
+import           Data.Word
+import           GHC.Generics                (Generic)
 
 import           Cardano.Crypto.Wallet.Types
 
 data XPrv = XPrv !Edwards25519.Scalar !ChainCode
 
 data XPub = XPub !Edwards25519.PointCompressed !ChainCode
-    deriving (Eq)
+    deriving (Eq, Ord, Show, Generic)
+
+instance NFData XPub
+instance Hashable XPub
 
 xprvPub :: XPrv -> ByteString
 xprvPub (XPrv s _) =
