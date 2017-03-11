@@ -27,10 +27,12 @@ library
                      , bytestring
                      , cryptonite >= 0.22
                      , cryptonite-openssl >= 0.5
+                     , hashable
   default-language:    Haskell2010
   C-sources:           cbits/ed25519/ed25519.c
                        cbits/encrypted_sign.c
   include-dirs:        cbits/ed25519 cbits
+  default-extensions:  GeneralizedNewtypeDeriving
 
 test-suite cardano-crypto-test
   type:                exitcode-stdio-1.0

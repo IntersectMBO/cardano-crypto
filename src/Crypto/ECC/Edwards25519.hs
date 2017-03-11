@@ -19,6 +19,7 @@
 -- * <http://eprint.iacr.org/2008/522.pdf>
 --
 {-# LANGUAGE BangPatterns #-}
+
 module Crypto.ECC.Edwards25519
     (
     -- * Basic types
@@ -40,13 +41,15 @@ module Crypto.ECC.Edwards25519
     , verify
     ) where
 
-import           Data.Bits
+import           Control.DeepSeq             (NFData)
 import           Crypto.Hash
-import           Crypto.Number.Serialize
 import           Crypto.Number.ModArithmetic
-import           Data.ByteString (ByteString)
-import qualified Data.ByteString as B (reverse, append)
-import qualified Data.ByteArray as B hiding (append)
+import           Crypto.Number.Serialize
+import           Data.Bits
+import qualified Data.ByteArray              as B hiding (append)
+import           Data.ByteString             (ByteString)
+import qualified Data.ByteString             as B (append, reverse)
+import           Data.Hashable               (Hashable)
 import           GHC.Stack
 
 -- | Represent a scalar in the base field
@@ -54,10 +57,11 @@ newtype Scalar = Scalar { unScalar :: ByteString }
 
 -- | Represent a point on the Edwards 25519 curve
 newtype PointCompressed = PointCompressed { unPointCompressed :: ByteString }
-    deriving (Show,Eq)
+    deriving (Show, Eq, Ord, NFData, Hashable)
 
 -- | Represent a signature
 newtype Signature = Signature { unSignature :: ByteString }
+    deriving (Show, Eq, Ord, NFData, Hashable)
 
 newtype Fq = Fq { unFq :: Integer }
 newtype Fp = Fp { unFp :: Integer }

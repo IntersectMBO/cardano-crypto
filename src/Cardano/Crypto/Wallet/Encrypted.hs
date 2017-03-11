@@ -14,13 +14,13 @@ module Cardano.Crypto.Wallet.Encrypted
 
 import           Control.DeepSeq
 import           Data.Word
-import           Foreign.Ptr
 import           Foreign.C.Types
+import           Foreign.Ptr
 
-import           Data.ByteString (ByteString)
-import           Data.ByteArray (ByteArrayAccess, withByteArray, ScrubbedBytes, Bytes)
-import qualified Data.ByteArray as B
 import           Crypto.Error
+import           Data.ByteArray   (ByteArrayAccess, Bytes, ScrubbedBytes, withByteArray)
+import qualified Data.ByteArray   as B
+import           Data.ByteString  (ByteString)
 import           System.IO.Unsafe
 
 totalKeySize :: Int
@@ -45,8 +45,10 @@ ccOffset :: Int
 ccOffset = publicKeyOffset + publicKeySize
 
 newtype Signature = Signature ByteString
+    deriving (NFData)
 
 newtype EncryptedKey = EncryptedKey ByteString
+    deriving (NFData)
 
 data PassPhrase
 
