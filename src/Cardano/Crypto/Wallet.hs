@@ -20,6 +20,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE DeriveGeneric      #-}
 
 module Cardano.Crypto.Wallet
     ( ChainCode(..)
@@ -38,7 +39,6 @@ module Cardano.Crypto.Wallet
     , xPubGetPublicKey
     , xPrvChangePass
     -- * Derivation function
-    , deriveXPrvHardened
     , deriveXPrv
     , deriveXPub
     -- * Signature & Verification from extended types
@@ -48,7 +48,8 @@ module Cardano.Crypto.Wallet
 
 import           Control.DeepSeq                 (NFData)
 import qualified Crypto.ECC.Edwards25519         as Edwards25519
-import           Crypto.Error                    (throwCryptoError)
+import           Control.Arrow                   (second)
+import           Crypto.Error                    (throwCryptoError, CryptoFailable(..))
 import           Crypto.Hash                     (SHA512, hash)
 import qualified Crypto.MAC.HMAC                 as HMAC
 import           Crypto.OpenSSL.Random           (randBytes)
@@ -62,14 +63,21 @@ import           Data.Word
 import           GHC.Generics                    (Generic)
 
 import           Cardano.Crypto.Wallet.Encrypted
-import           Cardano.Crypto.Wallet.Pure      (XPub (..), deriveXPub, hFinalize,
+import           Cardano.Crypto.Wallet.Pure      ({-XPub (..),-} hFinalize,
                                                   hInitSeed)
 import           Cardano.Crypto.Wallet.Types
 
 import           GHC.Stack
 
 newtype XPrv = XPrv EncryptedKey
-    deriving (NFData)
+    deriving (NFData, ByteArrayAccess)
+
+data XPub = XPub
+    { xpubPublicKey :: !ByteString
+    , xpubChaincode :: !ChainCode
+    } deriving (Generic)
+
+instance NFData XPub
 
 newtype XSignature = XSignature
     { unXSignature :: ByteString
@@ -85,12 +93,14 @@ generate seed passPhrase
         let (iL, iR) = hFinalize
                      $ flip HMAC.update ("Root Seed Chain" :: ByteString)
                      $ hInitSeed seed
-         in Just $ XPrv $ encryptedCreate iL passPhrase iR
+         in case encryptedCreate iL passPhrase iR of
+                CryptoPassed k -> Just $ XPrv k
+                CryptoFailed _ -> Nothing
 
 -- | Simple constructor
 xprv :: ByteArrayAccess bin => bin -> Either String XPrv
 xprv bs =
-      maybe (Left "error: xprv need to be 32*3 bytes") (Right . XPrv)
+      maybe (Left "error: xprv need to be 128 bytes") (Right . XPrv)
     $ encryptedKey
     $ convert bs
 
@@ -102,10 +112,10 @@ xpub bs
     | B.length bs /= 64 = Left ("error: xprv need to be 64 bytes: got " ++ show (B.length bs) ++ " bytes")
     | otherwise         =
         let (b1, b2) = B.splitAt 32 bs
-         in Right $ XPub (Edwards25519.pointCompressed b1) (ChainCode $ convert b2)
+         in Right $ XPub b1 (ChainCode $ convert b2)
 
 unXPub :: XPub -> ByteString
-unXPub (XPub pub (ChainCode cc)) = B.append (Edwards25519.unPointCompressed pub) cc
+unXPub (XPub pub (ChainCode cc)) = B.append pub cc
 
 xsignature :: ByteString -> Either String XSignature
 xsignature bs
@@ -114,14 +124,14 @@ xsignature bs
 
 -- | Generate extended public key from private key
 toXPub :: HasCallStack => XPrv -> XPub
-toXPub (XPrv encryptedKey) =
-    XPub (Edwards25519.pointCompressed $ encryptedPublic encryptedKey)
-         (ChainCode $ encryptedChainCode encryptedKey)
+toXPub (XPrv encryptedKey) = XPub pub (ChainCode cc)
+  where (_,r)     = B.splitAt 64 $ convert encryptedKey
+        (pub, cc) = B.splitAt 32 r
 
 -- | Return the Ed25519 public key associated with a XPub context
 xPubGetPublicKey :: XPub -> Ed25519.PublicKey
 xPubGetPublicKey (XPub pub _) =
-    throwCryptoError $ Ed25519.publicKey $ Edwards25519.unPointCompressed pub
+    throwCryptoError $ Ed25519.publicKey pub
 
 xPrvChangePass :: (ByteArrayAccess oldPassPhrase, ByteArrayAccess newPassPhrase)
 	           => oldPassPhrase -- ^ passphrase to decrypt the current encrypted key
@@ -131,14 +141,16 @@ xPrvChangePass :: (ByteArrayAccess oldPassPhrase, ByteArrayAccess newPassPhrase)
 xPrvChangePass oldPass newPass (XPrv encryptedKey) =
     XPrv $ encryptedChangePass oldPass newPass encryptedKey
 
-deriveXPrvHardened :: ByteArrayAccess passPhrase => passPhrase -> XPrv -> Word32 -> XPrv
-deriveXPrvHardened passPhrase (XPrv ekey) n =
-    XPrv (encryptedDeriveHardened ekey passPhrase n)
-
 -- | Derive a child extended private key from an extended private key
 deriveXPrv :: ByteArrayAccess passPhrase => passPhrase -> XPrv -> Word32 -> XPrv
 deriveXPrv passPhrase (XPrv ekey) n =
-    XPrv (encryptedDeriveNormal ekey passPhrase n)
+    XPrv (encryptedDerivePrivate ekey passPhrase n)
+
+-- | Derive a child extended private key from an extended private key
+deriveXPub :: XPub -> Word32 -> Maybe XPub
+deriveXPub (XPub pub (ChainCode cc)) n
+    | n >= 0x8000000 = Nothing
+    | otherwise      = Just $ uncurry XPub $ second ChainCode $ encryptedDerivePublic (pub,cc) n
 
 sign :: (ByteArrayAccess passPhrase, ByteArrayAccess msg)
      => passPhrase
@@ -150,6 +162,6 @@ sign passphrase (XPrv ekey) ba =
 
 verify :: ByteArrayAccess msg => XPub -> msg -> XSignature -> Bool
 verify (XPub point _) ba (XSignature signature) =
-    let pub = throwCryptoError $ Ed25519.publicKey $ Edwards25519.unPointCompressed point
+    let pub = throwCryptoError $ Ed25519.publicKey $ point
         sig = throwCryptoError $ Ed25519.signature $ signature
      in Ed25519.verify pub ba sig

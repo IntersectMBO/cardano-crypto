@@ -9,8 +9,8 @@ module Cardano.Crypto.Wallet.Encrypted
     , encryptedSign
     , encryptedPublic
     , encryptedChainCode
-    , encryptedDeriveNormal
-    , encryptedDeriveHardened
+    , encryptedDerivePrivate
+    , encryptedDerivePublic
     ) where
 
 import           Control.DeepSeq
@@ -25,19 +25,22 @@ import           Data.ByteString  (ByteString)
 import           System.IO.Unsafe
 
 totalKeySize :: Int
-totalKeySize = 32 + 32 + 32
+totalKeySize = encryptedKeySize + publicKeySize + ccSize
+
+totalPublicKeySize :: Int
+totalPublicKeySize = publicKeySize + ccSize
 
 encryptedKeySize :: Int
-encryptedKeySize = 32
+encryptedKeySize = 64
 
 publicKeySize :: Int
 publicKeySize = 32
 
-signatureSize :: Int
-signatureSize = 64
-
 ccSize :: Int
 ccSize = 32
+
+signatureSize :: Int
+signatureSize = 64
 
 publicKeyOffset :: Int
 publicKeyOffset = encryptedKeySize
@@ -49,7 +52,10 @@ newtype Signature = Signature ByteString
     deriving (NFData)
 
 newtype EncryptedKey = EncryptedKey ByteString
-    deriving (NFData)
+    deriving (NFData, ByteArrayAccess)
+
+type PublicKey = ByteString
+type ChainCode = ByteString
 
 data PassPhrase
 
@@ -70,12 +76,16 @@ encryptedCreate :: (ByteArrayAccess passphrase, ByteArrayAccess secret, ByteArra
                 => secret
                 -> passphrase
                 -> cc
-                -> EncryptedKey
-encryptedCreate sec pass cc = EncryptedKey $ B.allocAndFreeze totalKeySize $ \ekey ->
-    withByteArray sec  $ \psec  ->
-    withByteArray pass $ \ppass ->
-    withByteArray cc   $ \pcc   ->
-        wallet_encrypted_from_secret ppass (fromIntegral $ B.length pass) psec pcc ekey
+                -> CryptoFailable EncryptedKey
+encryptedCreate sec pass cc = unsafePerformIO $ do
+    (r, k) <- B.allocRet totalKeySize $ \ekey ->
+        withByteArray sec  $ \psec  ->
+        withByteArray pass $ \ppass ->
+        withByteArray cc   $ \pcc   ->
+            wallet_encrypted_from_secret ppass (fromIntegral $ B.length pass) psec pcc ekey
+    if r == 0
+        then return $ CryptoPassed $ EncryptedKey k
+        else return $ CryptoFailed CryptoError_SecretKeyStructureInvalid
 
 -- | Create a new encrypted that use a different passphrase
 encryptedChangePass :: (ByteArrayAccess oldPassPhrase, ByteArrayAccess newPassPhrase)
@@ -107,27 +117,31 @@ encryptedSign (EncryptedKey ekey) pass msg =
         withByteArray msg  $ \m ->
             wallet_encrypted_sign k p (fromIntegral $ B.length pass) m (fromIntegral $ B.length msg) sig
 
-encryptedDeriveNormal :: (ByteArrayAccess passphrase)
-                      => EncryptedKey
-                      -> passphrase
-                      -> Word32
-                      -> EncryptedKey
-encryptedDeriveNormal (EncryptedKey parent) pass childIndex =
+encryptedDerivePrivate :: (ByteArrayAccess passphrase)
+                       => EncryptedKey
+                       -> passphrase
+                       -> Word32
+                       -> EncryptedKey
+encryptedDerivePrivate (EncryptedKey parent) pass childIndex =
     EncryptedKey $ B.allocAndFreeze totalKeySize $ \ekey ->
         withByteArray pass   $ \ppass   ->
         withByteArray parent $ \pparent ->
-            wallet_encrypted_derive_normal pparent ppass (fromIntegral $ B.length pass) childIndex ekey
+            wallet_encrypted_derive_private pparent ppass (fromIntegral $ B.length pass) childIndex ekey
 
-encryptedDeriveHardened :: ByteArrayAccess passphrase
-                        => EncryptedKey
-                        -> passphrase
-                        -> Word32
-                        -> EncryptedKey
-encryptedDeriveHardened (EncryptedKey parent) pass childIndex =
-    EncryptedKey $ B.allocAndFreeze totalKeySize $ \ekey ->
-        withByteArray pass   $ \ppass   ->
-        withByteArray parent $ \pparent ->
-            wallet_encrypted_derive_hardened pparent ppass (fromIntegral $ B.length pass) childIndex ekey
+encryptedDerivePublic :: (PublicKey, ChainCode)
+                      -> Word32
+                      -> (PublicKey, ChainCode)
+encryptedDerivePublic (pub, cc) childIndex
+    | childIndex >= 0x80000000 = error "cannot derive hardened in derive public"
+    | otherwise                = unsafePerformIO $ do
+        (newCC, newPub) <-
+                B.allocRet publicKeySize $ \outPub ->
+                B.alloc ccSize           $ \outCc  ->
+                withByteArray pub        $ \ppub   ->
+                withByteArray cc         $ \pcc    -> do
+                    r <- wallet_encrypted_derive_public ppub pcc childIndex outPub outCc
+                    if r /= 0 then error "encrypted derive public assumption about index failed" else return ()
+        return (newPub, newCC)
 
 -- | Get the public part of a encrypted key
 encryptedPublic :: EncryptedKey -> ByteString
@@ -139,12 +153,13 @@ encryptedChainCode (EncryptedKey ekey) = sub ccOffset ccSize ekey
 
 sub ofs sz = B.take sz . B.drop ofs
 
+-- return 0 if success, otherwise 1 if structure of seed not proper
 foreign import ccall "wallet_encrypted_from_secret"
     wallet_encrypted_from_secret :: Ptr PassPhrase -> Word32
-                                 -> Ptr Word8 -- 32 bytes secret key / scalar
+                                 -> Ptr Word8 -- 32 bytes "seed secret key" (non extended)
                                  -> Ptr Word8 -- 32 bytes ChainCode
                                  -> Ptr EncryptedKey
-                                 -> IO ()
+                                 -> IO CInt
 
 foreign import ccall "wallet_encrypted_sign"
     wallet_encrypted_sign :: Ptr EncryptedKey
@@ -153,19 +168,20 @@ foreign import ccall "wallet_encrypted_sign"
                           -> Ptr Signature
                           -> IO ()
 
-foreign import ccall "wallet_encrypted_derive_normal"
-    wallet_encrypted_derive_normal :: Ptr EncryptedKey
-                                   -> Ptr PassPhrase -> Word32
-                                   -> Word32 -- index
-                                   -> Ptr EncryptedKey
-                                   -> IO ()
+foreign import ccall "wallet_encrypted_derive_private"
+    wallet_encrypted_derive_private :: Ptr EncryptedKey
+                                    -> Ptr PassPhrase -> Word32
+                                    -> Word32 -- index
+                                    -> Ptr EncryptedKey
+                                    -> IO ()
 
-foreign import ccall "wallet_encrypted_derive_hardened"
-    wallet_encrypted_derive_hardened :: Ptr EncryptedKey
-                                     -> Ptr PassPhrase -> Word32
-                                     -> Word32
-                                     -> Ptr EncryptedKey
-                                     -> IO ()
+foreign import ccall "wallet_encrypted_derive_public"
+    wallet_encrypted_derive_public :: Ptr PublicKey
+                                   -> Ptr ChainCode
+                                   -> Word32
+                                   -> Ptr PublicKey
+                                   -> Ptr ChainCode
+                                   -> IO CInt
 
 foreign import ccall "wallet_encrypted_change_pass"
     wallet_encrypted_change_pass :: Ptr EncryptedKey
@@ -173,4 +189,3 @@ foreign import ccall "wallet_encrypted_change_pass"
                                  -> Ptr PassPhrase -> Word32
                                  -> Ptr EncryptedKey
                                  -> IO ()
-

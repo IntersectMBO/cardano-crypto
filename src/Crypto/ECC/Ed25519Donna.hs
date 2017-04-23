@@ -33,7 +33,20 @@ import           Foreign.C.Types
 import           Data.ByteArray (ByteArrayAccess, withByteArray, ScrubbedBytes, Bytes)
 import qualified Data.ByteArray as B
 import           Crypto.Error
+import           Foreign.Storable
 import           System.IO.Unsafe
+import           Crypto.Random
+import           Crypto.Hash (hash, hashWith, Digest, SHA512(..), SHA256, HashAlgorithm, digestFromByteString)
+import           Crypto.MAC.HMAC
+import           Crypto.Number.Serialize
+import           Data.ByteArray (ByteArrayAccess, withByteArray, ScrubbedBytes, Bytes, alloc)
+import qualified Data.ByteArray as B
+import qualified Data.ByteString as BS
+import           Data.Bits
+import           Data.Word
+import           Foreign.Storable
+import           Control.Monad
+import           System.IO.Unsafe (unsafePerformIO)
 
 unsafeDoIO = unsafeDupablePerformIO
 
@@ -60,11 +73,22 @@ publicKey bs
 -- | Try to build a secret key from a bytearray
 secretKey :: ByteArrayAccess ba => ba -> CryptoFailable SecretKey
 secretKey bs
-    | B.length bs == secretKeySize = unsafePerformIO $ withByteArray bs initialize
-    | otherwise                    = CryptoFailed CryptoError_SecretKeyStructureInvalid
+    | B.length bs == 32 = unsafePerformIO verifyAndTweak
+    | otherwise         = CryptoFailed CryptoError_SecretKeySizeInvalid
   where
-        initialize inp = CryptoPassed . SecretKey <$> B.copy bs (\_ -> return ())
-{-# NOINLINE secretKey #-}
+    k = hashWith SHA512 bs
+    verifyAndTweak :: IO (CryptoFailable SecretKey)
+    verifyAndTweak = withByteArray k $ \inp -> do
+        b0  <- peekElemOff inp 0 :: IO Word8
+        b31 <- peekElemOff inp 31
+        if testBit b31 5
+            then return $ CryptoFailed CryptoError_SecretKeyStructureInvalid
+            else CryptoPassed . SecretKey <$> (alloc 64 $ \outp -> do
+                    pokeElemOff outp 0 (b0 .&. 0xf8) -- clear lowest 3 bits
+                    forM_ [1..30] $ \i -> peekElemOff inp i >>= pokeElemOff outp i
+                    pokeElemOff outp 31 ((b31 .&. 0x1f) .|. 0x40) -- clear highest bit and 3rd bit, and set 2nd highest.
+                    forM_ [32..63] $ \i -> peekElemOff inp i >>= pokeElemOff outp i
+                    )
 
 -- | Try to build a signature from a bytearray
 signature :: ByteArrayAccess ba => ba -> CryptoFailable Signature
@@ -124,7 +148,7 @@ publicKeySize :: Int
 publicKeySize = 32
 
 secretKeySize :: Int
-secretKeySize = 32
+secretKeySize = 64
 
 signatureSize :: Int
 signatureSize = 64
