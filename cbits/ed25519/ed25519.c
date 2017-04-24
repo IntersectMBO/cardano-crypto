@@ -151,7 +151,8 @@ int
 ED25519_FN(ed25519_extend) (const ed25519_unextended_secret_key seed, ed25519_secret_key secret)
 {
 	ed25519_extsk(secret, seed);
-    /* invalid if 3rd highest bit set */
+
+	/* invalid if 3rd highest bit set */
 	if (secret[31] & 0x20)
 		return 1;
 	return 0;
