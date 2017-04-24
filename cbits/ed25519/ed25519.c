@@ -143,6 +143,7 @@ ED25519_FN(ed25519_point_add) (const ed25519_public_key pk1, const ed25519_publi
 	ge25519_add(&R, &P, &Q);
 	ge25519_pack(res, &R);
 
+	res[31] ^= 0x80;
 	return 0;
 }
 
