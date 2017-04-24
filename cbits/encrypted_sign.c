@@ -84,6 +84,21 @@ static void unencrypt_stop(ed25519_secret_key decrypted_key)
 	clear(decrypted_key, sizeof(ed25519_secret_key));
 }
 
+static void wallet_encrypted_initialize
+    (uint8_t const *pass, uint32_t const pass_len,
+     const ed25519_secret_key secret_key,
+     const uint8_t cc[CHAIN_CODE_SIZE],
+     encrypted_key *encrypted_key)
+{
+	ed25519_public_key pub_key;
+
+	cardano_crypto_ed25519_publickey(secret_key, pub_key);
+
+	memory_combine(pass, pass_len, secret_key, encrypted_key->ekey, ENCRYPTED_KEY_SIZE);
+	memcpy(encrypted_key->pkey, pub_key, PUBLIC_KEY_SIZE);
+	memcpy(encrypted_key->cc, cc, CHAIN_CODE_SIZE);
+}
+
 
 int wallet_encrypted_from_secret
     (uint8_t const *pass, uint32_t const pass_len,
@@ -91,16 +106,10 @@ int wallet_encrypted_from_secret
      const uint8_t cc[CHAIN_CODE_SIZE],
      encrypted_key *encrypted_key)
 {
-	ed25519_public_key pub_key;
 	ed25519_secret_key secret_key;
-
 	if (cardano_crypto_ed25519_extend(seed, secret_key))
 		return 1;
-	cardano_crypto_ed25519_publickey(secret_key, pub_key);
-
-	memory_combine(pass, pass_len, secret_key, encrypted_key->ekey, ENCRYPTED_KEY_SIZE);
-	memcpy(encrypted_key->pkey, pub_key, PUBLIC_KEY_SIZE);
-	memcpy(encrypted_key->cc, cc, CHAIN_CODE_SIZE);
+	wallet_encrypted_initialize(pass, pass_len, secret_key, cc, encrypted_key);
 	return 0;
 }
 
@@ -165,6 +174,12 @@ static void add_256bits(uint8_t *dst, uint8_t *src1, uint8_t *src2)
 #define TAG_DERIVE_CC_NORMAL   "\x3"
 #define TAG_DERIVE_CC_HARDENED "\x1"
 
+static int index_is_hardened(uint32_t index)
+{
+	return (index & (1 << 31));
+}
+
+
 void wallet_encrypted_derive_private
     (encrypted_key const *in,
      uint8_t const *pass, uint32_t const pass_len,
@@ -189,7 +204,7 @@ void wallet_encrypted_derive_private
 
 	/* calculate Z */
 	HMAC_sha512_init(&hmac_ctx, in->cc, CHAIN_CODE_SIZE);
-	if (index & 0x8000000) {
+	if (index_is_hardened(index)) {
 		HMAC_sha512_update(&hmac_ctx, TAG_DERIVE_Z_HARDENED, 1);
 		HMAC_sha512_update(&hmac_ctx, priv_key, ENCRYPTED_KEY_SIZE);
 	} else {
@@ -209,7 +224,7 @@ void wallet_encrypted_derive_private
 
 	/* calculate the new chain code */
 	HMAC_sha512_init(&hmac_ctx, in->cc, CHAIN_CODE_SIZE);
-	if (index & 0x8000000) {
+	if (index_is_hardened(index)) {
 		HMAC_sha512_update(&hmac_ctx, TAG_DERIVE_CC_HARDENED, 1);
 		HMAC_sha512_update(&hmac_ctx, priv_key, ENCRYPTED_KEY_SIZE);
 	} else {
@@ -221,7 +236,7 @@ void wallet_encrypted_derive_private
 
 	unencrypt_stop(priv_key);
 
-	wallet_encrypted_from_secret(pass, pass_len, res_key, hmac_out + 32, out);
+	wallet_encrypted_initialize(pass, pass_len, res_key, hmac_out + 32, out);
 	clear(res_key, ENCRYPTED_KEY_SIZE);
 	clear(hmac_out, 64);
 }
@@ -241,7 +256,7 @@ int wallet_encrypted_derive_public
 	uint8_t hmac_out[64];
 
 	/* cannot derive hardened key using public bits */
-	if (index & 0x80000000)
+	if (index_is_hardened(index))
 		return 1;
 
 	/* little endian representation of index */
@@ -270,6 +285,7 @@ int wallet_encrypted_derive_public
 	HMAC_sha512_update(&hmac_ctx, pub_in, PUBLIC_KEY_SIZE);
 	HMAC_sha512_update(&hmac_ctx, idxBuf, 4);
 	HMAC_sha512_final(&hmac_ctx, hmac_out);
+
 	memcpy(cc_out, hmac_out + (sizeof(hmac_out) - CHAIN_CODE_SIZE), CHAIN_CODE_SIZE);
 
 	return 0;
