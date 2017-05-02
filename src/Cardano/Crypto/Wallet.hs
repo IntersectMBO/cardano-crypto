@@ -36,6 +36,7 @@ module Cardano.Crypto.Wallet
     , unXSignature
     , toXPub
     , xPubGetPublicKey
+    , xPrvChangePass
     -- * Derivation function
     , deriveXPrvHardened
     , deriveXPrv
@@ -121,6 +122,14 @@ toXPub (XPrv encryptedKey) =
 xPubGetPublicKey :: XPub -> Ed25519.PublicKey
 xPubGetPublicKey (XPub pub _) =
     throwCryptoError $ Ed25519.publicKey $ Edwards25519.unPointCompressed pub
+
+xPrvChangePass :: (ByteArrayAccess oldPassPhrase, ByteArrayAccess newPassPhrase)
+	           => oldPassPhrase -- ^ passphrase to decrypt the current encrypted key
+		       -> newPassPhrase -- ^ new passphrase to use for the new encrypted key
+               -> XPrv
+               -> XPrv
+xPrvChangePass oldPass newPass (XPrv encryptedKey) =
+    XPrv $ encryptedChangePass oldPass newPass encryptedKey
 
 deriveXPrvHardened :: ByteArrayAccess passPhrase => passPhrase -> XPrv -> Word32 -> XPrv
 deriveXPrvHardened passPhrase (XPrv ekey) n =
