@@ -5,6 +5,7 @@ module Cardano.Crypto.Wallet.Encrypted
     , Signature(..)
     -- * Methods
     , encryptedCreate
+    , encryptedChangePass
     , encryptedSign
     , encryptedPublic
     , encryptedChainCode
@@ -75,6 +76,22 @@ encryptedCreate sec pass cc = EncryptedKey $ B.allocAndFreeze totalKeySize $ \ek
     withByteArray pass $ \ppass ->
     withByteArray cc   $ \pcc   ->
         wallet_encrypted_from_secret ppass (fromIntegral $ B.length pass) psec pcc ekey
+
+-- | Create a new encrypted that use a different passphrase
+encryptedChangePass :: (ByteArrayAccess oldPassPhrase, ByteArrayAccess newPassPhrase)
+                    => oldPassPhrase -- ^ passphrase to decrypt the current encrypted key
+                    -> newPassPhrase -- ^ new passphrase to use for the new encrypted key
+                    -> EncryptedKey  -- ^ Key using the old pass phrase
+                    -> EncryptedKey  -- ^ Key using the new pass phrase
+encryptedChangePass oldPass newPass (EncryptedKey okey) =
+    EncryptedKey $ B.allocAndFreeze totalKeySize $ \ekey ->
+        withByteArray oldPass $ \opass  ->
+        withByteArray newPass $ \npass  ->
+        withByteArray okey    $ \oldkey ->
+            wallet_encrypted_change_pass oldkey
+                         opass (fromIntegral $ B.length oldPass)
+                         npass (fromIntegral $ B.length newPass)
+                         ekey
 
 -- | Sign using the encrypted keys and temporarly decrypting the secret in memory
 -- with a minimal memory footprint.
@@ -149,3 +166,11 @@ foreign import ccall "wallet_encrypted_derive_hardened"
                                      -> Word32
                                      -> Ptr EncryptedKey
                                      -> IO ()
+
+foreign import ccall "wallet_encrypted_change_pass"
+    wallet_encrypted_change_pass :: Ptr EncryptedKey
+                                 -> Ptr PassPhrase -> Word32
+                                 -> Ptr PassPhrase -> Word32
+                                 -> Ptr EncryptedKey
+                                 -> IO ()
+
