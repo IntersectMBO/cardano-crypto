@@ -134,8 +134,8 @@ xPubGetPublicKey (XPub pub _) =
     throwCryptoError $ Ed25519.publicKey pub
 
 xPrvChangePass :: (ByteArrayAccess oldPassPhrase, ByteArrayAccess newPassPhrase)
-	           => oldPassPhrase -- ^ passphrase to decrypt the current encrypted key
-		       -> newPassPhrase -- ^ new passphrase to use for the new encrypted key
+               => oldPassPhrase -- ^ passphrase to decrypt the current encrypted key
+               -> newPassPhrase -- ^ new passphrase to use for the new encrypted key
                -> XPrv
                -> XPrv
 xPrvChangePass oldPass newPass (XPrv encryptedKey) =
