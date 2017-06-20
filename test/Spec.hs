@@ -232,25 +232,20 @@ testChangePassphrase =
     , testProperty "hardened-derive-key-different-passphrase-stable" deriveHardenedEq
     ]
   where
-    pubEq (Ed _ s) (Passphrase p1) (Passphrase p2) =
-        let a = scalarToSecret s in
-         case encryptedCreate a p1 dummyChainCode of
-            CryptoFailed _     -> True === True
-            CryptoPassed xprv1 ->
-                let xprv2 = encryptedChangePass p1 p2 xprv1
-                 in encryptedPublic xprv1 === encryptedPublic xprv2
+    pubEq (ValidSeed (Seed s)) (Passphrase p1) (Passphrase p2) =
+        let xprv1 = throwCryptoError $ encryptedCreate s p1 dummyChainCode
+            xprv2 = encryptedChangePass p1 p2 xprv1
+         in encryptedPublic xprv1 === encryptedPublic xprv2
 
-    deriveNormalEq (Ed _ s) (Passphrase p1) (Passphrase p2) n =
-        let a     = scalarToSecret s
-            xprv1 = throwCryptoError $ encryptedCreate a p1 dummyChainCode
+    deriveNormalEq (ValidSeed (Seed s)) (Passphrase p1) (Passphrase p2) n =
+        let xprv1 = throwCryptoError $ encryptedCreate s p1 dummyChainCode
             xprv2 = encryptedChangePass p1 p2 xprv1
             cPrv1 = encryptedDerivePrivate xprv1 p1 (toNormal n)
             cPrv2 = encryptedDerivePrivate xprv2 p2 (toNormal n)
          in encryptedPublic cPrv1 === encryptedPublic cPrv2
 
-    deriveHardenedEq (Ed _ s) (Passphrase p1) (Passphrase p2) n =
-        let a     = scalarToSecret s
-            xprv1 = throwCryptoError $ encryptedCreate a p1 dummyChainCode
+    deriveHardenedEq (ValidSeed (Seed s)) (Passphrase p1) (Passphrase p2) n =
+        let xprv1 = throwCryptoError $ encryptedCreate s p1 dummyChainCode
             xprv2 = encryptedChangePass p1 p2 xprv1
             cPrv1 = encryptedDerivePrivate xprv1 p1 (toHardened n)
             cPrv2 = encryptedDerivePrivate xprv2 p2 (toHardened n)
