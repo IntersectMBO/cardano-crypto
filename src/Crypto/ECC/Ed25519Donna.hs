@@ -96,7 +96,8 @@ signature bs
     | B.length bs == signatureSize =
         CryptoPassed $ Signature $ B.copyAndFreeze bs (\_ -> return ())
     | otherwise =
-        CryptoFailed CryptoError_SecretKeyStructureInvalid
+        -- missing a SignatureSizeInvalid error, so use another one
+        CryptoFailed $ CryptoError_SecretKeySizeInvalid
 
 -- | Create a public key from a secret key
 toPublic :: SecretKey -> PublicKey
