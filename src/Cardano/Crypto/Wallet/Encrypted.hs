@@ -77,15 +77,17 @@ encryptedCreate :: (ByteArrayAccess passphrase, ByteArrayAccess secret, ByteArra
                 -> passphrase
                 -> cc
                 -> CryptoFailable EncryptedKey
-encryptedCreate sec pass cc = unsafePerformIO $ do
-    (r, k) <- B.allocRet totalKeySize $ \ekey ->
-        withByteArray sec  $ \psec  ->
-        withByteArray pass $ \ppass ->
-        withByteArray cc   $ \pcc   ->
-            wallet_encrypted_from_secret ppass (fromIntegral $ B.length pass) psec pcc ekey
-    if r == 0
-        then return $ CryptoPassed $ EncryptedKey k
-        else return $ CryptoFailed CryptoError_SecretKeyStructureInvalid
+encryptedCreate sec pass cc
+    | B.length sec /= 32 = CryptoFailed CryptoError_SecretKeySizeInvalid
+    | otherwise          = unsafePerformIO $ do
+        (r, k) <- B.allocRet totalKeySize $ \ekey ->
+            withByteArray sec  $ \psec  ->
+            withByteArray pass $ \ppass ->
+            withByteArray cc   $ \pcc   ->
+                wallet_encrypted_from_secret ppass (fromIntegral $ B.length pass) psec pcc ekey
+        if r == 0
+            then return $ CryptoPassed $ EncryptedKey k
+            else return $ CryptoFailed CryptoError_SecretKeyStructureInvalid
 
 -- | Create a new encrypted that use a different passphrase
 encryptedChangePass :: (ByteArrayAccess oldPassPhrase, ByteArrayAccess newPassPhrase)
