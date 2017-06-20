@@ -125,7 +125,7 @@ void wallet_encrypted_change_pass
 {
 	ed25519_secret_key priv_key;
 	unencrypt_start(old_pass, old_pass_len, in, priv_key);
-	memory_combine(new_pass, new_pass_len, out->ekey, priv_key, ENCRYPTED_KEY_SIZE);
+	memory_combine(new_pass, new_pass_len, priv_key, out->ekey, ENCRYPTED_KEY_SIZE);
 	unencrypt_stop(priv_key);
 	memcpy(out->pkey, in->pkey, PUBLIC_KEY_SIZE);
 	memcpy(out->cc, in->cc, CHAIN_CODE_SIZE);

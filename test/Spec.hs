@@ -21,6 +21,9 @@ noPassphrase = ""
 dummyPassphrase :: B.ByteString
 dummyPassphrase = "dummy passphrase"
 
+newtype Passphrase = Passphrase B.ByteString
+    deriving (Show,Eq)
+
 data Ed = Ed Integer Edwards25519.Scalar
 
 newtype Message = Message B.ByteString
@@ -51,6 +54,8 @@ instance Arbitrary Message where
     arbitrary = Message . B.pack <$> (choose (0, 10) >>= \n -> replicateM n arbitrary)
 instance Arbitrary Salt where
     arbitrary = Salt . B.pack <$> (choose (0, 10) >>= \n -> replicateM n arbitrary)
+instance Arbitrary Passphrase where
+    arbitrary = Passphrase . B.pack <$> (choose (0, 23) >>= \n -> replicateM n arbitrary)
 
 testEdwards25519 =
     [ testProperty "add" $ \(Ed _ a) (Ed _ b) -> (ltc a .+ ltc b) == ltc (Edwards25519.scalarAdd a b)
@@ -166,6 +171,35 @@ pointToPublic = throwCryptoError . EdVariant.publicKey . Edwards25519.unPointCom
 scalarToSecret :: Edwards25519.Scalar -> EdVariant.SecretKey
 scalarToSecret = throwCryptoError . EdVariant.secretKey . Edwards25519.unScalar
 
+testChangePassphrase =
+    [ testProperty "change-passphrase-publickey-stable" pubEq
+    , testProperty "normal-derive-key-different-passphrase-stable" deriveNormalEq
+    , testProperty "hardened-derive-key-different-passphrase-stable" deriveHardenedEq
+    ]
+  where
+    pubEq (Ed _ s) (Passphrase p1) (Passphrase p2) =
+        let a     = scalarToSecret s
+            xprv1 = encryptedCreate a p1 dummyChainCode
+            xprv2 = encryptedChangePass p1 p2 xprv1
+         in encryptedPublic xprv1 === encryptedPublic xprv2
+
+    deriveNormalEq (Ed _ s) (Passphrase p1) (Passphrase p2) n =
+        let a     = scalarToSecret s
+            xprv1 = encryptedCreate a p1 dummyChainCode
+            xprv2 = encryptedChangePass p1 p2 xprv1
+            cPrv1 = encryptedDeriveNormal xprv1 p1 (n+1)
+            cPrv2 = encryptedDeriveNormal xprv2 p2 (n+1)
+         in encryptedPublic cPrv1 === encryptedPublic cPrv2
+
+    deriveHardenedEq (Ed _ s) (Passphrase p1) (Passphrase p2) n =
+        let a     = scalarToSecret s
+            xprv1 = encryptedCreate a p1 dummyChainCode
+            xprv2 = encryptedChangePass p1 p2 xprv1
+            cPrv1 = encryptedDeriveHardened xprv1 p1 n
+            cPrv2 = encryptedDeriveHardened xprv2 p2 n
+         in encryptedPublic cPrv1 === encryptedPublic cPrv2
+
+    dummyChainCode = B.replicate 32 38
 
 main :: IO ()
 main = defaultMain $ testGroup "cardano-crypto"
@@ -173,4 +207,5 @@ main = defaultMain $ testGroup "cardano-crypto"
     , testGroup "edwards25519-ed25519variant" testVariant
     , testGroup "encrypted" testEncrypted
     , testGroup "hd-derivation" testHdDerivation
+    , testGroup "change-pass" testChangePassphrase
     ]
