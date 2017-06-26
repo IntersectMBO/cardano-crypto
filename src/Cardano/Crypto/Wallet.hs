@@ -49,7 +49,7 @@ module Cardano.Crypto.Wallet
 import           Control.DeepSeq                 (NFData)
 import qualified Crypto.ECC.Edwards25519         as Edwards25519
 import           Control.Arrow                   (second)
-import           Crypto.Error                    (throwCryptoError, CryptoFailable(..))
+import           Crypto.Error                    (throwCryptoError, CryptoFailable(..), CryptoError(..))
 import           Crypto.Hash                     (SHA512, hash)
 import qualified Crypto.MAC.HMAC                 as HMAC
 import           Crypto.OpenSSL.Random           (randBytes)
@@ -58,6 +58,7 @@ import           Data.ByteArray                  (ByteArrayAccess, convert)
 import qualified Data.ByteArray                  as B (append, length, splitAt)
 import           Data.ByteString                 (ByteString)
 import qualified Data.ByteString                 as B (pack)
+import qualified Data.ByteString.Char8           as BC
 import           Data.Hashable                   (Hashable)
 import           Data.Word
 import           GHC.Generics                    (Generic)
@@ -83,19 +84,33 @@ newtype XSignature = XSignature
     { unXSignature :: ByteString
     } deriving (Show, Eq, Ord, NFData, Hashable)
 
+-- | Generate a new XPrv
+--
+-- The seed need to be at least 32 bytes, otherwise an asynchronous error in throwned
 generate :: (ByteArrayAccess passPhrase, ByteArrayAccess seed)
          => seed
          -> passPhrase
-         -> Maybe XPrv
+         -> XPrv
 generate seed passPhrase
-    | B.length seed < 32 = Nothing
-    | otherwise          =
-        let (iL, iR) = hFinalize
-                     $ flip HMAC.update ("Root Seed Chain" :: ByteString)
+    | B.length seed < 32 = error ("Wallet.generate: seed need to be >= 32 bytes, got : " ++ show (B.length seed))
+    | otherwise          = loop 1
+  where
+    phrase :: Int -> ByteString
+    phrase i = "Root Seed Chain " `B.append` BC.pack (show i)
+
+    -- repeatdly try to generate from a seed, if we reach 1000th iteration we just bail
+    -- this should find a candidate after 2 try on average
+    loop i
+        | i > 1000  = error "internal error: Wallet.generate looping forever"
+        | otherwise =
+            case encryptedCreate iL passPhrase iR of
+                    CryptoPassed k -> XPrv k
+                    CryptoFailed err
+                        | err == CryptoError_SecretKeyStructureInvalid -> loop (i+1)
+                        | otherwise                                    -> error "internal error: Wallet.generate: got error from encryptedCreate"
+      where (iL, iR) = hFinalize
+                     $ flip HMAC.update (phrase i)
                      $ hInitSeed seed
-         in case encryptedCreate iL passPhrase iR of
-                CryptoPassed k -> Just $ XPrv k
-                CryptoFailed _ -> Nothing
 
 -- | Simple constructor
 xprv :: ByteArrayAccess bin => bin -> Either String XPrv
