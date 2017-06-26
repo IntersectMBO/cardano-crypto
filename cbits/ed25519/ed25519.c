@@ -19,7 +19,7 @@
 */
 
 DONNA_INLINE static void
-ed25519_extsk(hash_512bits extsk, const ed25519_secret_key sk) {
+ed25519_extsk(hash_512bits extsk, const ed25519_unextended_secret_key sk) {
 	ed25519_hash(extsk, sk, 32);
 	extsk[0] &= 248;
 	extsk[31] &= 127;
@@ -62,22 +62,14 @@ ED25519_FN(ed25519_sign) (const unsigned char *m, size_t mlen, const unsigned ch
 	hash_512bits extsk, hashr, hram;
 
 #ifdef VARIANT_CODE
-	ed25519_hash_init(&ctx);
-	ed25519_hash_update(&ctx, sk, 32);
-	ed25519_hash_update(&ctx, salt, slen);
-	ed25519_hash_final(&ctx, hashr);
-	memcpy(extsk, hashr, 64);
+	memcpy(extsk, sk, 64);
 #else
 	ed25519_extsk(extsk, sk);
 #endif
 
 	/* r = H(aExt[32..64], m) */
 	ed25519_hash_init(&ctx);
-#ifdef VARIANT_CODE
-	ed25519_hash_update(&ctx, extsk, 64);
-#else
 	ed25519_hash_update(&ctx, extsk + 32, 32);
-#endif
 	ed25519_hash_update(&ctx, m, mlen);
 	ed25519_hash_final(&ctx, hashr);
 	expand256_modm(r, hashr, 64);
@@ -91,11 +83,7 @@ ED25519_FN(ed25519_sign) (const unsigned char *m, size_t mlen, const unsigned ch
 	expand256_modm(S, hram, 64);
 
 	/* S = H(R,A,m)a */
-#ifdef VARIANT_CODE
-	expand256_modm(a, sk, 32);
-#else
 	expand256_modm(a, extsk, 32);
-#endif
 	mul256_modm(S, S, a);
 
 	/* S = (r + H(R,A,m)a) */
@@ -130,6 +118,7 @@ ED25519_FN(ed25519_sign_open) (const unsigned char *m, size_t mlen, const ed2551
 	return ed25519_verify(RS, checkR, 32) ? 0 : -1;
 }
 
+/* we only need the leftmost 32 bytes of the extended secret key */
 int
 ED25519_FN(ed25519_scalar_add) (const ed25519_secret_key sk1, const ed25519_secret_key sk2, ed25519_secret_key res)
 {
@@ -154,5 +143,17 @@ ED25519_FN(ed25519_point_add) (const ed25519_public_key pk1, const ed25519_publi
 	ge25519_add(&R, &P, &Q);
 	ge25519_pack(res, &R);
 
+	res[31] ^= 0x80;
+	return 0;
+}
+
+int
+ED25519_FN(ed25519_extend) (const ed25519_unextended_secret_key seed, ed25519_secret_key secret)
+{
+	ed25519_extsk(secret, seed);
+
+	/* invalid if 3rd highest bit set */
+	if (secret[31] & 0x20)
+		return 1;
 	return 0;
 }
