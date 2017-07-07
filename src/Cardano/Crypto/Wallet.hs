@@ -76,9 +76,10 @@ newtype XPrv = XPrv EncryptedKey
 data XPub = XPub
     { xpubPublicKey :: !ByteString
     , xpubChaincode :: !ChainCode
-    } deriving (Generic)
+    } deriving (Eq, Ord, Show, Generic)
 
 instance NFData XPub
+instance Hashable XPub
 
 newtype XSignature = XSignature
     { unXSignature :: ByteString
