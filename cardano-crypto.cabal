@@ -13,6 +13,10 @@ build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
 
+flag test-vectors
+  default: False
+  manual: True
+
 library
   hs-source-dirs:      src
   exposed-modules:     Cardano.Crypto.Wallet
@@ -45,6 +49,23 @@ test-suite cardano-crypto-test
                      , cardano-crypto
                      , tasty
                      , tasty-quickcheck
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010
+
+executable cardano-crypto-gen-test-vectors
+  hs-source-dirs:      test
+  main-is:             TestVectors.hs
+  if flag(test-vectors)
+    build-depends:       base
+                       , bytestring
+                       , base16-bytestring
+                       , memory
+                       , cryptonite
+                       , cardano-crypto
+                       , string-conv
+                       , containers
+                       , text
+                       , neat-interpolation
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
