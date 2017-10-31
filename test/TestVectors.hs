@@ -9,7 +9,6 @@ import Data.Monoid
 import Data.Word
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import qualified Data.Map.Strict as M
 import qualified Data.ByteString.Base16 as Hex
 import qualified Data.ByteString.Char8 as C8
 import Cardano.Crypto.Wallet
@@ -25,13 +24,12 @@ data TestVector = TestVector {
   , path  :: Path
   }
 
-runTest :: TestVector -> (XPrv, XPub)
+runTest :: TestVector -> XPrv
 runTest TestVector{..} = case (T.splitOn "/" path) of
-  ["m"]  -> let priv = generate (fst $ Hex.decode seed) pass
-            in (priv, toXPub priv)
+  ["m"]    -> generate (fst $ Hex.decode seed) pass
   ("m":xs) -> go (generate (fst $ Hex.decode seed) pass) xs
   where
-    go prv []     = (prv, toXPub prv)
+    go prv []     = prv
     go prv (x:xs) =
       let chainCode = toChaincode x
           prv'      = deriveXPrv pass prv chainCode
@@ -80,17 +78,60 @@ testVectors = [
   , noPwd { path = "m/0'/1'/2'/2'/1000000000'" }
   ]
   where
-    noPwd = def { pass = mempty }
+    noPwd           = def { pass = mempty }
 
-main :: IO ()
-main = T.writeFile "test-vectors.md" template
+
+{-
+Test Vector 2:
+
+Seed:
+
+-}
+
+bip44 :: [TestVector]
+bip44 = [
+  -- m/44'/1815'/0'
+    bip44 { path = bip44Path "0'" }
+  -- m/44'/1815'/0'/0
+  , bip44 { path = bip44Path "0'/0'" }
+  -- m/44'/1815'/0'/1
+  , bip44 { path = bip44Path "0'/1'" }
+  -- m/44'/1815'/0'/2
+  , bip44 { path = bip44Path "0'/2'" }
+  -- m/44'/1815'/0'/0/0
+  , bip44 { path = bip44Path "0'/0'/0'" }
+  -- m/44'/1815'/0'/0/1
+  , bip44 { path = bip44Path "0'/0'/1'" }
+  -- m/44'/1815'/0'/0/2
+  , bip44 { path = bip44Path "0'/0'/2'" }
+  -- With empty pwds
+  -- m/44'/1815'/0'
+  , bip44NoPwd { path = bip44Path "0'" }
+  -- m/44'/1815'/1'
+  , bip44NoPwd { path = bip44Path "1'" }
+  -- m/44'/1815'/2'/1'
+  , bip44NoPwd { path = bip44Path "2'/1'" }
+  -- m/44'/1815'/3'/2147483647'
+  , bip44NoPwd { path = bip44Path "3'/2147483647'" }
+  -- m/44'/1815'/4'/2147483647'/1'
+  , bip44NoPwd { path = bip44Path "4'/2147483647'/1" }
+  -- m/44'/1815'/5'/2147483647'/2147483646'
+  , bip44NoPwd { path = bip44Path "5'/2147483647'/2147483646'" }
+  ]
+  where
+    coinType        = (1815 :: Word32) -- Year Ada Lovelace was born
+    -- BIP-44-style: m / purpose' / coin_type' / account' / change / address_index
+    bip44PathPrefix = "m/44'/" <> toS (show coinType) <> "'"
+    bip44           = def { path = bip44PathPrefix }
+    bip44Path rest  = bip44PathPrefix <> "/" <> rest
+    bip44NoPwd      = bip44 { pass = mempty }
 
 testVector :: TestVector -> T.Text
 testVector tv =
   let test_path = renderPath (path tv)
       test_seed = toS (seed tv)
       test_pass = let p = toS (pass tv) in if p == mempty then "(empty)" else p
-      (test_xprv, test_xpub) = bimap renderXprv renderXpub (runTest tv)
+      (test_xprv, test_xpub) = let p = (runTest tv) in (renderXprv p, renderXpub (toXPub p))
   in [text|
 
 ```
@@ -105,4 +146,29 @@ Pwd (ASCII): $test_pass
 |]
 
 template :: T.Text
-template = T.unlines (map testVector testVectors)
+template = T.unlines (header : map testVector testVectors <>
+                     (bip44Header : map testVector bip44))
+  where
+    header = [text|
+This test vectors uses the `Cardano.Crypto.Wallet` primitives to produce extended
+private keys which are _encrypted_ with a passphrase. A passphrase can be empty as well.
+Under this schema, we support only hardened key derivation.
+    |]
+
+    bip44Header  = [text|
+## A note on BIP-44 derivation
+
+BIP-44 proposes the following path for addresses:
+
+```
+m / purpose' / coin_type' / account' / change / address_index
+```
+
+Where the last 2 levels are composed by non-hardened keys, but currently we don't
+support non-hardened derivation for private keys, only for public keys.
+    |]
+
+
+main :: IO ()
+main = do
+  T.writeFile "test-vectors.md" template
