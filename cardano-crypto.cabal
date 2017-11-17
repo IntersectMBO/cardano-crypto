@@ -33,6 +33,7 @@ library
                        cbits/encrypted_sign.c
   include-dirs:        cbits/ed25519 cbits
   default-extensions:  GeneralizedNewtypeDeriving
+  ghc-options:         -Wall
 
 test-suite cardano-crypto-test
   type:                exitcode-stdio-1.0
