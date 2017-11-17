@@ -19,7 +19,7 @@ import           Foreign.C.Types
 import           Foreign.Ptr
 
 import           Crypto.Error
-import           Data.ByteArray   (ByteArrayAccess, Bytes, ScrubbedBytes, withByteArray)
+import           Data.ByteArray   (ByteArrayAccess, withByteArray)
 import qualified Data.ByteArray   as B
 import           Data.ByteString  (ByteString)
 import           System.IO.Unsafe
@@ -27,8 +27,8 @@ import           System.IO.Unsafe
 totalKeySize :: Int
 totalKeySize = encryptedKeySize + publicKeySize + ccSize
 
-totalPublicKeySize :: Int
-totalPublicKeySize = publicKeySize + ccSize
+--totalPublicKeySize :: Int
+--totalPublicKeySize = publicKeySize + ccSize
 
 encryptedKeySize :: Int
 encryptedKeySize = 64
@@ -153,6 +153,7 @@ encryptedPublic (EncryptedKey ekey) = sub publicKeyOffset publicKeySize ekey
 encryptedChainCode :: EncryptedKey -> ByteString
 encryptedChainCode (EncryptedKey ekey) = sub ccOffset ccSize ekey
 
+sub :: B.ByteArray c => Int -> Int -> c -> c
 sub ofs sz = B.take sz . B.drop ofs
 
 -- return 0 if success, otherwise 1 if structure of seed not proper

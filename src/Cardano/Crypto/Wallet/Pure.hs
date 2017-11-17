@@ -17,14 +17,12 @@ module Cardano.Crypto.Wallet.Pure
 
 import           Control.DeepSeq             (NFData)
 import qualified Crypto.Math.Edwards25519    as Edwards25519
-import           Crypto.Error                (throwCryptoError)
-import           Crypto.Hash                 (SHA512, hash)
+import           Crypto.Hash                 (SHA512)
 import qualified Crypto.MAC.HMAC             as HMAC
-import           Crypto.OpenSSL.Random       (randBytes)
-import qualified Crypto.PubKey.Ed25519       as Ed25519
+--import qualified Crypto.PubKey.Ed25519       as Ed25519
 import           Data.Bits
 import           Data.ByteArray              (ByteArrayAccess, convert)
-import qualified Data.ByteArray              as B (append, length, splitAt)
+import qualified Data.ByteArray              as B (splitAt)
 import           Data.ByteString             (ByteString)
 import qualified Data.ByteString             as B (pack)
 import           Data.Hashable               (Hashable)
@@ -45,12 +43,14 @@ xprvPub :: XPrv -> ByteString
 xprvPub (XPrv s _) =
     Edwards25519.unPointCompressed $ Edwards25519.scalarToPoint s
 
+deriveXPrv :: XPrv -> Word32 -> XPrv
 deriveXPrv (XPrv sec ccode) n =
     let !pub     = Edwards25519.scalarToPoint sec
         (iL, iR) = walletHash $ DerivationHashNormal pub ccode n
         !derived = Edwards25519.scalar iL
      in XPrv (Edwards25519.scalarAdd sec derived) iR
 
+deriveXPrvHardened :: XPrv -> Word32 -> XPrv
 deriveXPrvHardened (XPrv sec ccode) n =
     let (iL, iR) = walletHash $ DerivationHashHardened sec ccode n
      in XPrv (Edwards25519.scalar iL) iR
@@ -82,7 +82,9 @@ walletHash (DerivationHashNormal pub cc w) =
             $ flip HMAC.update normalTag
             $ hInit cc
 
+hardenedTag :: ByteString
 hardenedTag = B.pack $ map (fromIntegral . fromEnum) "HARD"
+normalTag :: ByteString
 normalTag   = B.pack $ map (fromIntegral . fromEnum) "NORM"
 
 -- | Encode a Word32 in Big endian
