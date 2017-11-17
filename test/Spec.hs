@@ -6,7 +6,7 @@ import           Control.Monad
 import           Test.Tasty
 import           Test.Tasty.QuickCheck
 
-import qualified Crypto.ECC.Edwards25519 as Edwards25519
+import qualified Crypto.Math.Edwards25519 as Edwards25519
 import qualified Crypto.ECC.Ed25519Donna as EdVariant
 import           Cardano.Crypto.Wallet
 import           Cardano.Crypto.Wallet.Encrypted

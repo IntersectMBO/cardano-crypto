@@ -16,7 +16,7 @@ module Cardano.Crypto.Wallet.Pure
     ) where
 
 import           Control.DeepSeq             (NFData)
-import qualified Crypto.ECC.Edwards25519     as Edwards25519
+import qualified Crypto.Math.Edwards25519    as Edwards25519
 import           Crypto.Error                (throwCryptoError)
 import           Crypto.Hash                 (SHA512, hash)
 import qualified Crypto.MAC.HMAC             as HMAC

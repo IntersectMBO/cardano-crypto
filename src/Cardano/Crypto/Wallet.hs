@@ -47,7 +47,7 @@ module Cardano.Crypto.Wallet
     ) where
 
 import           Control.DeepSeq                 (NFData)
-import qualified Crypto.ECC.Edwards25519         as Edwards25519
+import qualified Crypto.Math.Edwards25519        as Edwards25519
 import           Control.Arrow                   (second)
 import           Crypto.Error                    (throwCryptoError, CryptoFailable(..), CryptoError(..))
 import           Crypto.Hash                     (SHA512, hash)
