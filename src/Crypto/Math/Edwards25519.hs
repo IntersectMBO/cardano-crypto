@@ -64,7 +64,7 @@ newtype Signature = Signature { unSignature :: ByteString }
     deriving (Show, Eq, Ord, NFData, Hashable)
 
 newtype Fq = Fq { unFq :: Integer }
-newtype Fp = Fp { unFp :: Integer }
+-- newtype Fp = Fp { unFp :: Integer }
 
 {- for debugging
 fq :: HasCallStack => Integer -> Fq
