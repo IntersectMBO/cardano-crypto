@@ -35,20 +35,15 @@ import qualified Data.ByteArray as B
 import           Crypto.Error
 import           Foreign.Storable
 import           System.IO.Unsafe
-import           Crypto.Random
-import           Crypto.Hash (hash, hashWith, Digest, SHA512(..), SHA256, HashAlgorithm, digestFromByteString)
-import           Crypto.MAC.HMAC
-import           Crypto.Number.Serialize
-import           Data.ByteArray (ByteArrayAccess, withByteArray, ScrubbedBytes, Bytes, alloc)
-import qualified Data.ByteArray as B
-import qualified Data.ByteString as BS
+import           Crypto.Hash (hashWith, SHA512(..))
+import           Data.ByteArray (alloc)
 import           Data.Bits
-import           Data.Word
-import           Foreign.Storable
 import           Control.Monad
 import           System.IO.Unsafe (unsafePerformIO)
 
+unsafeDoIO :: IO a -> a
 unsafeDoIO = unsafeDupablePerformIO
+{-# NOINLINE unsafeDoIO #-}
 
 -- | An Ed25519 Secret key
 newtype SecretKey = SecretKey ScrubbedBytes

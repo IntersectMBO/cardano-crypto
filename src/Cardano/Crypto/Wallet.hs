@@ -26,7 +26,7 @@ module Cardano.Crypto.Wallet
     ( ChainCode(..)
     -- * Extended Private & Public types
     , XPrv
-    , XPub
+    , XPub(..)
     , XSignature
     , generate
     , xprv
@@ -47,17 +47,13 @@ module Cardano.Crypto.Wallet
     ) where
 
 import           Control.DeepSeq                 (NFData)
-import qualified Crypto.ECC.Edwards25519         as Edwards25519
 import           Control.Arrow                   (second)
 import           Crypto.Error                    (throwCryptoError, CryptoFailable(..), CryptoError(..))
-import           Crypto.Hash                     (SHA512, hash)
 import qualified Crypto.MAC.HMAC                 as HMAC
-import           Crypto.OpenSSL.Random           (randBytes)
 import qualified Crypto.PubKey.Ed25519           as Ed25519
 import           Data.ByteArray                  (ByteArrayAccess, convert)
 import qualified Data.ByteArray                  as B (append, length, splitAt)
 import           Data.ByteString                 (ByteString)
-import qualified Data.ByteString                 as B (pack)
 import qualified Data.ByteString.Char8           as BC
 import           Data.Hashable                   (Hashable)
 import           Data.Word
@@ -139,8 +135,8 @@ xsignature bs
 
 -- | Generate extended public key from private key
 toXPub :: HasCallStack => XPrv -> XPub
-toXPub (XPrv encryptedKey) = XPub pub (ChainCode cc)
-  where (_,r)     = B.splitAt 64 $ convert encryptedKey
+toXPub (XPrv ekey) = XPub pub (ChainCode cc)
+  where (_,r)     = B.splitAt 64 $ convert ekey
         (pub, cc) = B.splitAt 32 r
 
 -- | Return the Ed25519 public key associated with a XPub context
@@ -153,8 +149,8 @@ xPrvChangePass :: (ByteArrayAccess oldPassPhrase, ByteArrayAccess newPassPhrase)
                -> newPassPhrase -- ^ new passphrase to use for the new encrypted key
                -> XPrv
                -> XPrv
-xPrvChangePass oldPass newPass (XPrv encryptedKey) =
-    XPrv $ encryptedChangePass oldPass newPass encryptedKey
+xPrvChangePass oldPass newPass (XPrv ekey) =
+    XPrv $ encryptedChangePass oldPass newPass ekey
 
 -- | Derive a child extended private key from an extended private key
 deriveXPrv :: ByteArrayAccess passPhrase => passPhrase -> XPrv -> Word32 -> XPrv

@@ -1,5 +1,5 @@
 -- |
--- Module      : Crypto.ECC.Edwards25519
+-- Module      : Crypto.Math.Edwards25519
 -- Description : Edwards 25519 arithmetics
 -- Maintainer  : vincent@typed.io
 --
@@ -20,7 +20,7 @@
 --
 {-# LANGUAGE BangPatterns #-}
 
-module Crypto.ECC.Edwards25519
+module Crypto.Math.Edwards25519
     (
     -- * Basic types
       Scalar
@@ -64,7 +64,7 @@ newtype Signature = Signature { unSignature :: ByteString }
     deriving (Show, Eq, Ord, NFData, Hashable)
 
 newtype Fq = Fq { unFq :: Integer }
-newtype Fp = Fp { unFp :: Integer }
+-- newtype Fp = Fp { unFp :: Integer }
 
 {- for debugging
 fq :: HasCallStack => Integer -> Fq
