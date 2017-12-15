@@ -24,6 +24,8 @@ import qualified Data.ByteArray   as B
 import           Data.ByteString  (ByteString)
 import           System.IO.Unsafe
 
+import           Cardano.Crypto.Wallet.Types (DerivationScheme(..))
+
 totalKeySize :: Int
 totalKeySize = encryptedKeySize + publicKeySize + ccSize
 
@@ -120,20 +122,22 @@ encryptedSign (EncryptedKey ekey) pass msg =
             wallet_encrypted_sign k p (fromIntegral $ B.length pass) m (fromIntegral $ B.length msg) sig
 
 encryptedDerivePrivate :: (ByteArrayAccess passphrase)
-                       => EncryptedKey
+                       => DerivationScheme
+                       -> EncryptedKey
                        -> passphrase
                        -> Word32
                        -> EncryptedKey
-encryptedDerivePrivate (EncryptedKey parent) pass childIndex =
+encryptedDerivePrivate _ (EncryptedKey parent) pass childIndex =
     EncryptedKey $ B.allocAndFreeze totalKeySize $ \ekey ->
         withByteArray pass   $ \ppass   ->
         withByteArray parent $ \pparent ->
             wallet_encrypted_derive_private pparent ppass (fromIntegral $ B.length pass) childIndex ekey
 
-encryptedDerivePublic :: (PublicKey, ChainCode)
+encryptedDerivePublic :: DerivationScheme
+                      -> (PublicKey, ChainCode)
                       -> Word32
                       -> (PublicKey, ChainCode)
-encryptedDerivePublic (pub, cc) childIndex
+encryptedDerivePublic _ (pub, cc) childIndex
     | childIndex >= 0x80000000 = error "cannot derive hardened in derive public"
     | otherwise                = unsafePerformIO $ do
         (newCC, newPub) <-
