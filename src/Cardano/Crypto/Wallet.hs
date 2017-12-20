@@ -20,10 +20,13 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators       #-}
-{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE PatternSynonyms     #-}
 
 module Cardano.Crypto.Wallet
     ( ChainCode(..)
+    , DerivationScheme(..)
+    , pattern LatestScheme
     -- * Extended Private & Public types
     , XPrv
     , XPub(..)
@@ -153,15 +156,15 @@ xPrvChangePass oldPass newPass (XPrv ekey) =
     XPrv $ encryptedChangePass oldPass newPass ekey
 
 -- | Derive a child extended private key from an extended private key
-deriveXPrv :: ByteArrayAccess passPhrase => passPhrase -> XPrv -> Word32 -> XPrv
-deriveXPrv passPhrase (XPrv ekey) n =
-    XPrv (encryptedDerivePrivate ekey passPhrase n)
+deriveXPrv :: ByteArrayAccess passPhrase => DerivationScheme -> passPhrase -> XPrv -> Word32 -> XPrv
+deriveXPrv ds passPhrase (XPrv ekey) n =
+    XPrv (encryptedDerivePrivate ds ekey passPhrase n)
 
 -- | Derive a child extended private key from an extended private key
-deriveXPub :: XPub -> Word32 -> Maybe XPub
-deriveXPub (XPub pub (ChainCode cc)) n
+deriveXPub :: DerivationScheme -> XPub -> Word32 -> Maybe XPub
+deriveXPub ds (XPub pub (ChainCode cc)) n
     | n >= 0x8000000 = Nothing
-    | otherwise      = Just $ uncurry XPub $ second ChainCode $ encryptedDerivePublic (pub,cc) n
+    | otherwise      = Just $ uncurry XPub $ second ChainCode $ encryptedDerivePublic ds (pub,cc) n
 
 sign :: (ByteArrayAccess passPhrase, ByteArrayAccess msg)
      => passPhrase
