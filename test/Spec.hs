@@ -24,6 +24,8 @@ import           Crypto.Error
 import           Data.Word
 import           Data.Bits
 
+import qualified Crypto.Encoding.BIP39 as BIP39 (tests)
+
 noPassphrase :: B.ByteString
 noPassphrase = ""
 
@@ -281,6 +283,7 @@ main = defaultMain $ Group "cardano-crypto"
     , Group "point-addition" testPointAdd
     , Group "encrypted" (testEncrypted DerivationScheme1)
     , Group "change-pass" (testChangePassphrase DerivationScheme1)
+    , BIP39.tests
     ]
     {-
     , Group "edwards25519-ed25519variant" testVariant

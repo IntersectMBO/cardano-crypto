@@ -37,7 +37,6 @@ import           Data.List (intersperse)
 import qualified Data.ByteArray as BA (index)
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BC
 
 import           Data.Proxy
 import           Data.Kind (Constraint)
@@ -189,7 +188,7 @@ runTest tv =
             Nothing -> error "entropy generation error" 
             Just e -> do
                 let w = entropyToWords e
-                    dictLookup x = maybe (error "xXX") id $ lookup x $ zip (testVectorWIndex' tv) $ map fromList $ words $ BC.unpack $ testVectorWords tv
+                    dictLookup (WordIndex x) = English.words !! fromIntegral x
                     seed = sentenceToSeed w (Dictionary dictLookup " ") "TREZOR"
                 validate "words equal" (ListN.unListN w === testVectorWIndex' tv)
                 validate "seed equal" (seed === testVectorSeed tv)
@@ -220,10 +219,12 @@ testVectors =
         [1019,2015,1790,2039,1983,1533,2031,1919,1019,2015,1790,2039,1983,1533,2031,1919,1019,2009]
         "\xf2\xb9\x45\x08\x73\x2b\xcb\xac\xbc\xc0\x20\xfa\xef\xec\xfc\x89\xfe\xaf\xa6\x64\x9a\x54\x91\xb8\xc9\x52\xce\xde\x49\x6c\x21\x4a\x0c\x7b\x3c\x39\x2d\x16\x87\x48\xf2\xd4\xa6\x12\xba\xda\x07\x53\xb5\x2a\x1c\x7a\xc5\x3c\x1e\x93\xab\xd5\xc6\x32\x0b\x9e\x95\xdd"
         "xprv9s21ZrQH143K3Lv9MZLj16np5GzLe7tDKQfVusBni7toqJGcnKRtHSxUwbKUyUWiwpK55g1DUSsw76TF1T93VT4gz4wt5RM23pkaQLnvBh7"
+{-
     , TestVector
         "\xf5\x85\xc1\x1a\xec\x52\x0d\xb5\x7d\xd3\x53\xc6\x95\x54\xb2\x1a\x89\xb2\x0f\xb0\x65\x09\x66\xfa\x0a\x9d\x6f\x74\xfd\x98\x9d\x8f"
         "void come effort suffer camp survey warrior heavy shoot primary clutch crush open amazing screen patrol group space point ten exist slush involve unfold"
         [1964,368,565,1733,262,1749,1978,851,1588,1365,356,424,1241,62,1548,1289,823,1666,1338,1783,638,1634,945,1897]
         "\x01\xf5\xbc\xed\x59\xde\xc4\x8e\x36\x2f\x2c\x45\xb5\xde\x68\xb9\xfd\x6c\x92\xc6\x63\x4f\x44\xd6\xd4\x0a\xab\x69\x05\x65\x06\xf0\xe3\x55\x24\xa5\x18\x03\x4d\xdc\x11\x92\xe1\xda\xcd\x32\xc1\xed\x3e\xaa\x3c\x3b\x13\x1c\x88\xed\x8e\x7e\x54\xc4\x9a\x5d\x09\x98"
         "xprv9s21ZrQH143K39rnQJknpH1WEPFJrzmAqqasiDcVrNuk926oizzJDDQkdiTvNPr2FYDYzWgiMiC63YmfPAa2oPyNB23r2g7d1yiK6WpqaQS"
+-}
     ]

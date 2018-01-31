@@ -1,7 +1,8 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Crypto.Encoding.BIP39.English ( words ) where
 
-import Prelude (String)
+import Basement.String (String)
 
 words :: [String]
 words =
