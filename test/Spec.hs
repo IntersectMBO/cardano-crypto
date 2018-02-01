@@ -1,10 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DataKinds #-}
 module Main where
 
 import           Control.Monad
 
-import           Test.Tasty
-import           Test.Tasty.QuickCheck
+import           Basement.From
+import           Basement.Nat
+import           Basement.Bounded
+import           Data.Proxy
+import           Foundation.Collection (nonEmpty_)
+import           Foundation.Check
+import           Foundation.Check.Main
 
 import qualified Crypto.Math.Edwards25519 as Edwards25519
 import qualified Crypto.ECC.Ed25519Donna as EdVariant
@@ -16,6 +23,8 @@ import qualified Data.ByteArray as B (convert)
 import           Crypto.Error
 import           Data.Word
 import           Data.Bits
+
+import qualified Crypto.Encoding.BIP39 as BIP39 (tests)
 
 noPassphrase :: B.ByteString
 noPassphrase = ""
@@ -46,41 +55,48 @@ p = 2^(255 :: Int) - 19
 q :: Integer
 q = 2^(252 :: Int) + 27742317777372353535851937790883648493
 
+chooseInt :: forall n . KnownNat n => Proxy n -> Gen Int
+chooseInt _ = fromInteger . from . unZn <$> (arbitrary :: Gen (Zn n))
+
+chooseInteger :: forall n . KnownNat n => Integer -> Proxy n -> Gen Integer
+chooseInteger base _ = ((+) base) . fromInteger . from . unZn <$> (arbitrary :: Gen (Zn n))
+
 instance Show Ed where
     show (Ed i _) = "Edwards25519.Scalar " ++ show i
 instance Eq Ed where
     (Ed x _) == (Ed y _) = x == y
 instance Arbitrary Ed where
     arbitrary = do
-        n <- frequency
-                [ (1, choose (q - 10000, q-1))
-                , (1, choose (1, 1000))
-                , (2, choose (1, q-1))
+        n <- frequency $ nonEmpty_
+                [ (1, chooseInteger (q-10000) (Proxy :: Proxy 9999))
+                , (1, chooseInteger 1         (Proxy :: Proxy 999))
+                , (2, chooseInteger 1         (Proxy :: Proxy 7237005577332262213973186563042994240857116359379907606001950938285454250988))
                 ]
         return (Ed n (Edwards25519.scalarFromInteger n))
 instance Arbitrary Message where
-    arbitrary = Message . B.pack <$> (choose (0, 10) >>= \n -> replicateM n arbitrary)
+    arbitrary = Message . B.pack <$> (chooseInt (Proxy :: Proxy 10) >>= \n -> replicateM n arbitrary)
 instance Arbitrary Salt where
-    arbitrary = Salt . B.pack <$> (choose (0, 10) >>= \n -> replicateM n arbitrary)
+    arbitrary = Salt . B.pack <$> (chooseInt (Proxy :: Proxy 10) >>= \n -> replicateM n arbitrary)
 instance Arbitrary Passphrase where
-    arbitrary = Passphrase . B.pack <$> (choose (0, 23) >>= \n -> replicateM n arbitrary)
+    arbitrary = Passphrase . B.pack <$> (chooseInt (Proxy :: Proxy 23) >>= \n -> replicateM n arbitrary)
 instance Arbitrary Seed where
     arbitrary = Seed . B.pack <$> replicateM 32 arbitrary
 instance Arbitrary ValidSeed where
-    arbitrary = ValidSeed <$>
-        (arbitrary `suchThat` \(Seed seed) -> case seedToSecret seed of
-                                                CryptoPassed _ -> True
-                                                _              -> False)
+    arbitrary = do
+        s@(Seed seed) <- arbitrary
+        case seedToSecret seed of
+            CryptoPassed _ -> pure $ ValidSeed s
+            _              -> arbitrary
 
 testEdwards25519 =
-    [ testProperty "add" $ \(Ed _ a) (Ed _ b) -> (ltc a .+ ltc b) == ltc (Edwards25519.scalarAdd a b)
+    [ Property "add" $ \(Ed _ a) (Ed _ b) -> (ltc a .+ ltc b) == ltc (Edwards25519.scalarAdd a b)
     ]
   where
     (.+) = Edwards25519.pointAdd
     ltc = Edwards25519.scalarToPoint
 
 testPointAdd =
-    [ testProperty "add" $ \(Ed _ a) (Ed _ b) ->
+    [ Property "add" $ \(Ed _ a) (Ed _ b) ->
         let pa = Edwards25519.scalarToPoint a
             pb = Edwards25519.scalarToPoint b
             pc = Edwards25519.pointAdd pa pb
@@ -92,8 +108,8 @@ testPointAdd =
 
 {-
 testHdDerivation =
-    [ testProperty "pub . sec-derivation = pub-derivation . pub" normalDerive
-    , testProperty "verify (pub . pub-derive) (sign . sec-derivation)" verifyDerive
+    [ Property "pub . sec-derivation = pub-derivation . pub" normalDerive
+    , Property "verify (pub . pub-derive) (sign . sec-derivation)" verifyDerive
     ]
   where
     dummyChainCode = B.replicate 32 38
@@ -116,20 +132,20 @@ testHdDerivation =
          in verify cPub dummyMsg (sign noPassphrase cPrv dummyMsg)
 -}
 
-testEncrypted =
-    [ testProperty "pub(sec) = pub(encrypted(no-pass, sec))" (pubEq noPassphrase)
-    , testProperty "pub(sec) = pub(encrypted(dummy, sec))" (pubEq dummyPassphrase)
-    , testProperty "pub(sec) = pub(encrypted(no-pass, sec))" (pubEqValid noPassphrase)
-    , testProperty "pub(sec) = pub(encrypted(dummy, sec))" (pubEqValid dummyPassphrase)
-    , testProperty "sign(sec, msg) = sign(encrypted(no-pass, sec), msg)" (signEq noPassphrase)
-    , testProperty "sign(sec, msg) = sign(encrypted(dummy, sec), msg)" (signEq dummyPassphrase)
-    , testProperty "n <= 0x80000000 => pub(derive(sec, n)) = derive-public(pub(sec), n) [chaincode]" (deriveNormalChainCode noPassphrase)
-    , testProperty "n <= 0x80000000 => pub(derive(sec, n)) = derive-public(pub(sec), n) [publickey]" (deriveNormalPublicKey dummyPassphrase)
+testEncrypted dscheme =
+    [ Property "pub(sec) = pub(encrypted(no-pass, sec))" (pubEq noPassphrase)
+    , Property "pub(sec) = pub(encrypted(dummy, sec))" (pubEq dummyPassphrase)
+    , Property "pub(sec) = pub(encrypted(no-pass, sec))" (pubEqValid noPassphrase)
+    , Property "pub(sec) = pub(encrypted(dummy, sec))" (pubEqValid dummyPassphrase)
+    , Property "sign(sec, msg) = sign(encrypted(no-pass, sec), msg)" (signEq noPassphrase)
+    , Property "sign(sec, msg) = sign(encrypted(dummy, sec), msg)" (signEq dummyPassphrase)
+    , Property "n <= 0x80000000 => pub(derive(sec, n)) = derive-public(pub(sec), n) [chaincode]" (deriveNormalChainCode noPassphrase)
+    , Property "n <= 0x80000000 => pub(derive(sec, n)) = derive-public(pub(sec), n) [publickey]" (deriveNormalPublicKey dummyPassphrase)
     {-
-    , testProperty "derive-hard(sec, n) = derive-hard(encrypted(no-pass, sec), n)" (deriveEq True noPassphrase)
-    , testProperty "derive-hard(sec, n) = derive-hard(encrypted(dummy, sec), n)" (deriveEq True dummyPassphrase)
-    , testProperty "derive-norm(sec, n) = derive-norm(encrypted(no-pass, sec), n)" (deriveEq False noPassphrase)
-    , testProperty "derive-norm(sec, n) = derive-norm(encrypted(dummy, sec), n)" (deriveEq False dummyPassphrase)
+    , Property "derive-hard(sec, n) = derive-hard(encrypted(no-pass, sec), n)" (deriveEq True noPassphrase)
+    , Property "derive-hard(sec, n) = derive-hard(encrypted(dummy, sec), n)" (deriveEq True dummyPassphrase)
+    , Property "derive-norm(sec, n) = derive-norm(encrypted(no-pass, sec), n)" (deriveEq False noPassphrase)
+    , Property "derive-norm(sec, n) = derive-norm(encrypted(dummy, sec), n)" (deriveEq False dummyPassphrase)
     -}
     ]
   where
@@ -156,14 +172,14 @@ testEncrypted =
             _ -> error "valid seed got a invalid result"
     deriveNormalPublicKey pass (ValidSeed (Seed s)) nRaw =
         let ekey = throwCryptoError $ encryptedCreate s pass dummyChainCode
-            ckey = encryptedDerivePrivate ekey pass n
-            (expectedPubkey, expectedChainCode) = encryptedDerivePublic (encryptedPublic ekey, encryptedChainCode ekey) n
+            ckey = encryptedDerivePrivate dscheme ekey pass n
+            (expectedPubkey, expectedChainCode) = encryptedDerivePublic dscheme (encryptedPublic ekey, encryptedChainCode ekey) n
          in encryptedPublic ckey === expectedPubkey
       where n = nRaw `mod` 0x80000000
     deriveNormalChainCode pass (ValidSeed (Seed s)) nRaw =
         let ekey = throwCryptoError $ encryptedCreate s pass dummyChainCode
-            ckey = encryptedDerivePrivate ekey pass n
-            (expectedPubkey, expectedChainCode) = encryptedDerivePublic (encryptedPublic ekey, encryptedChainCode ekey) n
+            ckey = encryptedDerivePrivate dscheme ekey pass n
+            (expectedPubkey, expectedChainCode) = encryptedDerivePublic dscheme (encryptedPublic ekey, encryptedChainCode ekey) n
          in encryptedChainCode ckey === expectedChainCode
       where n = nRaw `mod` 0x80000000
             {-
@@ -184,10 +200,10 @@ testEncrypted =
          -}
 
 testVariant =
-    [ testProperty "public-key" testPublicKey
-    , testProperty "signature" testSignature
-    , testProperty "scalar-add" testScalarAdd
-    -- , testProperty "point-add" testPointAdd
+    [ Property "public-key" testPublicKey
+    , Property "signature" testSignature
+    , Property "scalar-add" testScalarAdd
+    -- , Property "point-add" testPointAdd
     ]
   where
     testPublicKey (Ed _ a) =
@@ -211,13 +227,13 @@ testVariant =
             q' = EdVariant.toPublic $ scalarToSecret b
          in Edwards25519.pointAdd p q `pointEqPublic` EdVariant.publicAdd p' q'
 
-    signatureEqSig :: Edwards25519.Signature -> EdVariant.Signature -> Property
+    signatureEqSig :: Edwards25519.Signature -> EdVariant.Signature -> PropertyCheck
     signatureEqSig sig sig2 = Edwards25519.unSignature sig === B.convert sig2
 
-    pointEqPublic :: Edwards25519.PointCompressed -> EdVariant.PublicKey -> Property
+    pointEqPublic :: Edwards25519.PointCompressed -> EdVariant.PublicKey -> PropertyCheck
     pointEqPublic pub (EdVariant.PublicKey pub2) = Edwards25519.unPointCompressed pub === B.convert pub2
 
-    scalarEqSecret :: Edwards25519.Scalar -> EdVariant.SecretKey -> Property
+    scalarEqSecret :: Edwards25519.Scalar -> EdVariant.SecretKey -> PropertyCheck
     scalarEqSecret s sec = Edwards25519.unScalar s === B.convert sec
 
 pointToPublic :: Edwards25519.PointCompressed -> EdVariant.PublicKey
@@ -226,10 +242,11 @@ pointToPublic = throwCryptoError . EdVariant.publicKey . Edwards25519.unPointCom
 scalarToSecret :: Edwards25519.Scalar -> EdVariant.SecretKey
 scalarToSecret = throwCryptoError . EdVariant.secretKey . Edwards25519.unScalar
 
-testChangePassphrase =
-    [ testProperty "change-passphrase-publickey-stable" pubEq
-    , testProperty "normal-derive-key-different-passphrase-stable" deriveNormalEq
-    , testProperty "hardened-derive-key-different-passphrase-stable" deriveHardenedEq
+testChangePassphrase :: DerivationScheme -> [Test]
+testChangePassphrase dscheme =
+    [ Property "change-passphrase-publickey-stable" pubEq
+    , Property "normal-derive-key-different-passphrase-stable" deriveNormalEq
+    , Property "hardened-derive-key-different-passphrase-stable" deriveHardenedEq
     ]
   where
     pubEq (ValidSeed (Seed s)) (Passphrase p1) (Passphrase p2) =
@@ -240,15 +257,15 @@ testChangePassphrase =
     deriveNormalEq (ValidSeed (Seed s)) (Passphrase p1) (Passphrase p2) n =
         let xprv1 = throwCryptoError $ encryptedCreate s p1 dummyChainCode
             xprv2 = encryptedChangePass p1 p2 xprv1
-            cPrv1 = encryptedDerivePrivate xprv1 p1 (toNormal n)
-            cPrv2 = encryptedDerivePrivate xprv2 p2 (toNormal n)
+            cPrv1 = encryptedDerivePrivate dscheme xprv1 p1 (toNormal n)
+            cPrv2 = encryptedDerivePrivate dscheme xprv2 p2 (toNormal n)
          in encryptedPublic cPrv1 === encryptedPublic cPrv2
 
     deriveHardenedEq (ValidSeed (Seed s)) (Passphrase p1) (Passphrase p2) n =
         let xprv1 = throwCryptoError $ encryptedCreate s p1 dummyChainCode
             xprv2 = encryptedChangePass p1 p2 xprv1
-            cPrv1 = encryptedDerivePrivate xprv1 p1 (toHardened n)
-            cPrv2 = encryptedDerivePrivate xprv2 p2 (toHardened n)
+            cPrv1 = encryptedDerivePrivate dscheme xprv1 p1 (toHardened n)
+            cPrv2 = encryptedDerivePrivate dscheme xprv2 p2 (toHardened n)
          in encryptedPublic cPrv1 === encryptedPublic cPrv2
 
     dummyChainCode = B.replicate 32 38
@@ -261,14 +278,15 @@ seedToSecret :: B.ByteString -> CryptoFailable EdVariant.SecretKey
 seedToSecret = EdVariant.secretKey
 
 main :: IO ()
-main = defaultMain $ testGroup "cardano-crypto"
-    [ testGroup "edwards25519-arithmetic" testEdwards25519
-    , testGroup "point-addition" testPointAdd
-    , testGroup "encrypted" testEncrypted
-    , testGroup "change-pass" testChangePassphrase
+main = defaultMain $ Group "cardano-crypto"
+    [ Group "edwards25519-arithmetic" testEdwards25519
+    , Group "point-addition" testPointAdd
+    , Group "encrypted" (testEncrypted DerivationScheme1)
+    , Group "change-pass" (testChangePassphrase DerivationScheme1)
+    , BIP39.tests
     ]
     {-
-    , testGroup "edwards25519-ed25519variant" testVariant
-    , testGroup "hd-derivation" testHdDerivation
+    , Group "edwards25519-ed25519variant" testVariant
+    , Group "hd-derivation" testHdDerivation
     ]
     -}
