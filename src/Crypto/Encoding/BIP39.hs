@@ -13,6 +13,9 @@ module Crypto.Encoding.BIP39
     ( Entropy
     , MnemonicSentence
     , Dictionary(..)
+    , WordIndex
+    , wordIndex
+    , unWordIndex
     , Seed
     , Passphrase
     , entropyRaw
@@ -65,7 +68,7 @@ type Passphrase = String
 
 type Seed = ByteString
 
-newtype WordIndex = WordIndex Word16 -- 2048 max
+newtype WordIndex = WordIndex { unWordIndex :: Word16 } -- 2048 max
     deriving (Show,Eq)
 
 wordIndex :: Word16 -> WordIndex
