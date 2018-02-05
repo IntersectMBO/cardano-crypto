@@ -1,13 +1,21 @@
 # compiler supported and their equivalent LTS
-compiler: ghc-8.0 lts-9.13
-compiler: ghc-8.2 nightly-2017-11-17
+compiler: ghc-8.0 lts-9.21
+compiler: ghc-8.0-testvectors lts-9.21
+compiler: ghc-8.2 lts-10.4
+compiler: ghc-8.2-testvectors lts-10.4
+compiler: ghc-8.4 ghc-8.4-alpha2
+compiler: ghc-8.4-testvectors ghc-8.4-alpha2
 
 # options
-# option: alias x=y z=v
+option: testvectors flag=cardano-crypto:test-vectors
 
 # builds
-build: ghc-8.2 allowed-failure
 build: ghc-8.0
+build: ghc-8.0-testvectors testvectors
+build: ghc-8.2
+build: ghc-8.2-testvectors testvectors
+build: ghc-8.4 allowed-failure
+build: ghc-8.4-testvectors allowed-failure testvectors
 
 # packages
 package: '.'
