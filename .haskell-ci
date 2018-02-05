@@ -1,0 +1,18 @@
+# compiler supported and their equivalent LTS
+compiler: ghc-8.0 lts-9.13
+compiler: ghc-8.2 nightly-2017-11-17
+
+# options
+# option: alias x=y z=v
+
+# builds
+build: ghc-8.2 allowed-failure
+build: ghc-8.0
+
+# packages
+package: '.'
+
+# extra builds
+hlint: allowed-failure
+weeder: allowed-failure
+coverall: false
