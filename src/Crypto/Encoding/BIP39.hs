@@ -96,7 +96,7 @@ type family Elem (e :: Nat) (l :: [Nat]) :: Constraint where
 
 -- | Number of Words related to a specific entropy size in bits
 type family MnemonicWords (n :: Nat) :: Nat where
-    MnemonicWords 128 = 12 
+    MnemonicWords 128 = 12
     MnemonicWords 160 = 15
     MnemonicWords 192 = 18
     MnemonicWords 224 = 21
@@ -134,7 +134,7 @@ toEntropy bs
     | BS.length bs*8 == natValInt (Proxy @n) = Just $ Entropy bs (checksum @csz bs)
     | otherwise                              = Nothing
 
--- | Given an entropy of size n, Create a list 
+-- | Given an entropy of size n, Create a list
 entropyToWords :: forall n csz mw
                 . (KnownNat n, KnownNat csz, KnownNat mw, NatWithinBound Int n, NatWithinBound Int mw, ValidEntropySize n, CheckSumBits n ~ csz, MnemonicWords n ~ mw)
                => Entropy n
@@ -151,7 +151,7 @@ entropyToWords (Entropy bs (Checksum w)) =
             let (acc', d) = acc `divMod` 2048
              in wordIndex (fromIntegral d) : loop (nbWords - 1) acc'
 
--- | Create a seed from mmemonic sentence and passphrase using the BIP39 algorithm 
+-- | Create a seed from mmemonic sentence and passphrase using the BIP39 algorithm
 sentenceToSeed :: MnemonicSentence mw -- ^ Mmenomic sentence of mw words
                -> Dictionary          -- ^ Dictionary of words/indexes
                -> Passphrase          -- ^ Binary Passphrase used to generate
@@ -193,7 +193,7 @@ runTest tv =
        => Proxy n -> Test
     go proxyN = CheckPlan ("test " <> fromList (show $ natVal proxyN)) $ do
         case toEntropy @n (testVectorInput tv) of
-            Nothing -> error "entropy generation error" 
+            Nothing -> error "entropy generation error"
             Just e -> do
                 let w = entropyToWords e
                     dictLookup (WordIndex x) = English.words !! fromIntegral x
@@ -203,7 +203,7 @@ runTest tv =
                 validate "seed equal" (seed === testVectorSeed tv)
 
 testVectors :: [TestVector]
-testVectors = 
+testVectors =
     [ TestVector
         "\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f"
         "legal winner thank year wave sausage worth useful legal winner thank yellow"
