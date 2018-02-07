@@ -22,6 +22,7 @@ module Crypto.Encoding.BIP39
     , entropyRaw
     , toEntropy
     , entropyToWords
+    , wordsToEntropy
     , sentenceToSeed
 
     -- * helpers
