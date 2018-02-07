@@ -47,7 +47,6 @@ import Basement.Nat
 import           Data.Bits (xor)
 import           Data.List (zip)
 import Crypto.Encoding.BIP39
-import           Crypto.Hash (SHA512(..))
 import qualified Crypto.KDF.PBKDF2 as PBKDF2
 import Crypto.Random (MonadRandom (..))
 
@@ -89,7 +88,7 @@ scramble :: forall entropysizeI entropysizeO mnemonicsize scramblesize csI csO r
 scramble e passphrase = do
     iv <- getRandomBytes ivSizeBytes
     let salt = iv <> constant
-    let otp = PBKDF2.generate (PBKDF2.prfHMAC SHA512)
+    let otp = PBKDF2.fastPBKDF2_SHA512
                     (PBKDF2.Parameters iterations entropySize)
                     passphrase
                     salt
@@ -132,7 +131,7 @@ unscramble e passphrase =
   where
     (iv, eraw) = B.splitAt ivSizeBytes (entropyRaw e)
     salt = iv <> constant
-    otp = PBKDF2.generate (PBKDF2.prfHMAC SHA512)
+    otp = PBKDF2.fastPBKDF2_SHA512
                   (PBKDF2.Parameters iterations entropySize)
                   passphrase
                   salt

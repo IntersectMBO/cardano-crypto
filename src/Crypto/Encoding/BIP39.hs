@@ -60,7 +60,7 @@ import           Data.Kind (Constraint)
 import           GHC.TypeLits
 import           GHC.Exts (IsList(..))
 
-import           Crypto.Hash (hashWith, SHA256(..), SHA512(..))
+import           Crypto.Hash (hashWith, SHA256(..))
 import           Crypto.Number.Serialize (os2ip, i2ospOf_)
 import qualified Crypto.KDF.PBKDF2 as PBKDF2
 
@@ -225,7 +225,7 @@ sentenceToSeed :: MnemonicSentence mw -- ^ Mmenomic sentence of mw words
                -> Passphrase          -- ^ Binary Passphrase used to generate
                -> Seed
 sentenceToSeed mw Dictionary{..} passphrase =
-    PBKDF2.generate (PBKDF2.prfHMAC SHA512)
+    PBKDF2.fastPBKDF2_SHA512
                     (PBKDF2.Parameters 2048 64)
                     sentence
                     (toData ("mnemonic" `mappend` passphrase))
