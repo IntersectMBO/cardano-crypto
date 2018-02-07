@@ -44,7 +44,8 @@ import Crypto.Random (MonadRandom (..))
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 
-type IVSize = 3
+type IVSizeWords = 3
+type IVSizeBits  = 32
 ivSizeBytes :: Int
 ivSizeBytes = 4
 
@@ -68,8 +69,8 @@ iterations = 10000
 scramble :: forall entropysizeI entropysizeO mnemonicsize scramblesize csI csO randomly
          . ( ConsistentEntropy entropysizeI mnemonicsize csI
            , ConsistentEntropy entropysizeO scramblesize csO
-           , (mnemonicsize + IVSize) ~ scramblesize
-           , (entropysizeI + 32) ~ entropysizeO
+           , (mnemonicsize + IVSizeWords) ~ scramblesize
+           , (entropysizeI + IVSizeBits)  ~ entropysizeO
            , MonadRandom randomly
            )
          => Entropy entropysizeI -> Passphrase -> randomly (Entropy entropysizeO)
@@ -105,8 +106,8 @@ scramble e passphrase = do
 unscramble :: forall entropysizeI entropysizeO mnemonicsize scramblesize csI csO
            . ( ConsistentEntropy entropysizeI scramblesize csI
              , ConsistentEntropy entropysizeO mnemonicsize csO
-             , (mnemonicsize + IVSize) ~ scramblesize
-             , (entropysizeO + 32) ~ entropysizeI
+             , (mnemonicsize + IVSizeWords) ~ scramblesize
+             , (entropysizeO + IVSizeBits)  ~ entropysizeI
              )
           => Entropy entropysizeI
           -> Passphrase
