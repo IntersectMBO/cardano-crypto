@@ -10,6 +10,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE RecordWildCards      #-}
+{-# LANGUAGE BangPatterns         #-}
+{-# LANGUAGE FlexibleInstances    #-}
 module Crypto.Encoding.BIP39
     ( Entropy
     , MnemonicSentence
@@ -27,6 +29,8 @@ module Crypto.Encoding.BIP39
 
     -- * helpers
     , ConsistentEntropy
+    , CheckSumBits
+    , MnemonicWords
     -- * Tests
     , tests
     ) where
@@ -35,12 +39,16 @@ import           Basement.String (String)
 import qualified Basement.String as String
 import           Basement.Nat
 import qualified Basement.Sized.List as ListN
+import           Basement.NormalForm
+import           Basement.Compat.Typeable
 
 import           Foundation.Check
 
+import           Control.Monad (replicateM)
 import           Data.Bits
 import           Data.Monoid
 import           Data.Word
+import           Data.Maybe (fromMaybe)
 import           Data.List (intersperse, elemIndex)
 import qualified Data.ByteArray as BA (index)
 import           Data.ByteString (ByteString)
@@ -120,14 +128,26 @@ checksum bs = Checksum (hashWith SHA256 bs `BA.index` 0)
   --  csz = natVal (Proxy @csz)
 
 data Entropy (n :: Nat) = Entropy ByteString (Checksum (CheckSumBits n))
-    deriving (Show,Eq)
+    deriving (Show,Eq,Typeable)
+instance NormalForm (Entropy n) where
+    toNormalForm (Entropy !_ cs) = toNormalForm cs
+instance Arbitrary (Entropy 128) where
+    arbitrary = fromMaybe (error "arbitrary (Entropy 128)") . toEntropy . BS.pack <$> replicateM 16 arbitrary
+instance Arbitrary (Entropy 160) where
+    arbitrary = fromMaybe (error "arbitrary (Entropy 160)") . toEntropy . BS.pack <$> replicateM 20 arbitrary
+instance Arbitrary (Entropy 192) where
+    arbitrary = fromMaybe (error "arbitrary (Entropy 192)") . toEntropy . BS.pack <$> replicateM 24 arbitrary
+instance Arbitrary (Entropy 224) where
+    arbitrary = fromMaybe (error "arbitrary (Entropy 224)") . toEntropy . BS.pack <$> replicateM 28 arbitrary
+instance Arbitrary (Entropy 256) where
+    arbitrary = fromMaybe (error "arbitrary (Entropy 256)") . toEntropy . BS.pack <$> replicateM 32 arbitrary
 
 -- | Get the raw binary associated with the entropy
 entropyRaw :: Entropy n -> ByteString
 entropyRaw (Entropy bs _) = bs
 
 newtype Checksum (bits :: Nat) = Checksum Word8
-    deriving (Show,Eq)
+    deriving (Show,Eq,Typeable,NormalForm)
 
 -- | Create a specific entropy type of known size from a raw bytestring
 toEntropy :: forall n csz

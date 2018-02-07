@@ -1,14 +1,9 @@
-{-# LANGUAGE Rank2Types           #-}
-{-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE TypeOperators        #-}
-{-# LANGUAGE TypeApplications     #-}
-{-# LANGUAGE NoImplicitPrelude    #-}
-{-# LANGUAGE ConstraintKinds      #-}
-{-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
-
--- | implementation of the proposal specification for Paper Wallet
+-- |
+-- Module      : Cardano.Crypto.Encoding.Seed
+-- Description : tools relating to Paper Wallet
+-- Maintainer  : nicolas.diprima@iohk.io
+--
+-- implementation of the proposal specification for Paper Wallet
 -- see https://github.com/input-output-hk/cardano-specs/blob/master/proposals/0001-PaperWallet.md
 --
 -- however we took allow more genericity in the implementation and to allow
@@ -23,12 +18,27 @@
 -- * we use 10000 iteration for the PBKDF2
 -- * we use the 4 bytes "IOHK" for the CONSTANT
 --
+
+{-# LANGUAGE Rank2Types           #-}
+{-# LANGUAGE DataKinds            #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE TypeOperators        #-}
+{-# LANGUAGE TypeApplications     #-}
+{-# LANGUAGE NoImplicitPrelude    #-}
+{-# LANGUAGE ConstraintKinds      #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
+
 module Cardano.Crypto.Encoding.Seed
     ( Entropy
     , Passphrase
     , MnemonicSentence
+    , ConsistentEntropy
     , scramble
     , unscramble
+
+    , IVSizeWords
+    , IVSizeBits
     ) where
 
 import Foundation
@@ -46,12 +56,14 @@ import qualified Data.ByteString as B
 
 type IVSizeWords = 3
 type IVSizeBits  = 32
+
 ivSizeBytes :: Int
 ivSizeBytes = 4
 
 constant :: ByteString
 constant = "IOHK"
 
+-- | Number of iteration of the PBKDF2
 iterations :: Int
 iterations = 10000
 
@@ -114,7 +126,7 @@ unscramble :: forall entropysizeI entropysizeO mnemonicsize scramblesize csI csO
           -> Entropy entropysizeO
 unscramble e passphrase =
     let ee = B.pack $ fmap (uncurry xor) $ zip (B.unpack otp) (B.unpack eraw)
-     in case toEntropy @entropysizeO (iv <> ee) of
+     in case toEntropy @entropysizeO ee of
          Nothing -> error "unscramble: the function BIP39.toEntropy returned an unexpected error"
          Just e' -> e'
   where
