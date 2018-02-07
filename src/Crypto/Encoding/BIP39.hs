@@ -49,7 +49,7 @@ import           GHC.TypeLits
 import           GHC.Exts (IsList(..))
 
 import           Crypto.Hash (hashWith, SHA256(..), SHA512(..))
-import           Crypto.Number.Serialize (os2ip)
+import           Crypto.Number.Serialize (os2ip, i2ospOf_)
 import qualified Crypto.KDF.PBKDF2 as PBKDF2
 
 import           Prelude hiding (String)
@@ -134,6 +134,30 @@ toEntropy bs
     | BS.length bs*8 == natValInt (Proxy @n) = Just $ Entropy bs (checksum @csz bs)
     | otherwise                              = Nothing
 
+wordsToEntropy :: forall entropysize checksumsize numbermnemonicword
+                . ( KnownNat entropysize, KnownNat checksumsize, KnownNat numbermnemonicword
+                  , NatWithinBound Int entropysize, NatWithinBound Int numbermnemonicword
+                  , ValidEntropySize entropysize, CheckSumBits entropysize ~ checksumsize, MnemonicWords entropysize ~ numbermnemonicword
+                  )
+               => MnemonicSentence numbermnemonicword
+               -> Maybe (Entropy entropysize)
+wordsToEntropy ms =
+    let -- we don't revese the list here, we know that the first word index
+        -- is the highest first 11 bits of the entropy.
+        entropy         = ListN.foldl' (\acc x -> acc `shiftL` 11 + fromIntegral (unWordIndex x)) 0 ms
+        initialEntropy = i2ospOf_ nb (entropy `shiftR` fromIntegral checksumsize)
+        -- initialEntropy = BS.take nb entropy
+        -- cs = BS.drop nb entropy
+        e = toEntropy initialEntropy
+     in e
+  where
+    checksumsize = natVal (Proxy @checksumsize)
+    entropysize  = natVal (Proxy @entropysize)
+    -- number of bytes in the initial entropy
+    nb  = fromInteger entropysize `div` 8
+    -- number of word in the mnemonic sentence
+    -- mw  = natVal (Proxy @mw)
+
 -- | Given an entropy of size n, Create a list
 entropyToWords :: forall n csz mw
                 . (KnownNat n, KnownNat csz, KnownNat mw, NatWithinBound Int n, NatWithinBound Int mw, ValidEntropySize n, CheckSumBits n ~ csz, MnemonicWords n ~ mw)
@@ -196,11 +220,13 @@ runTest tv =
             Nothing -> error "entropy generation error"
             Just e -> do
                 let w = entropyToWords e
+                    e' = wordsToEntropy @n w
                     dictLookup (WordIndex x) = English.words !! fromIntegral x
                     dictRevLookup x = maybe (error $ "word not in the english dictionary: " <> toList x) (wordIndex . fromIntegral) $ x `elemIndex` English.words
                     seed = sentenceToSeed w (Dictionary dictLookup dictRevLookup " ") "TREZOR"
                 validate "words equal" (ListN.unListN w === testVectorWIndex' tv)
                 validate "seed equal" (seed === testVectorSeed tv)
+                validate "entropy equal" (Just e === e')
 
 testVectors :: [TestVector]
 testVectors =
