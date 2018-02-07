@@ -23,6 +23,9 @@ module Crypto.Encoding.BIP39
     , toEntropy
     , entropyToWords
     , sentenceToSeed
+
+    -- * helpers
+    , ConsistentEntropy
     -- * Tests
     , tests
     ) where
@@ -134,11 +137,32 @@ toEntropy bs
     | BS.length bs*8 == natValInt (Proxy @n) = Just $ Entropy bs (checksum @csz bs)
     | otherwise                              = Nothing
 
+-- | Type Constraint Alias to check the entropy size, the number of mnemonic
+-- words and the checksum size is consistent. i.e. that the following is true:
+--
+-- |  entropysize  | checksumsize | entropysize + checksumsize | mnemonicsize |
+-- +---------------+--------------+----------------------------+--------------+
+-- |          128  |            4 |                       132  |          12  |
+-- |          160  |            5 |                       165  |          15  |
+-- |          192  |            6 |                       198  |          18  |
+-- |          224  |            7 |                       231  |          21  |
+-- |          256  |            8 |                       264  |          24  |
+--
+-- This type constraint alias also perform all the GHC's cumbersome type level
+-- literal handling.
+--
+type ConsistentEntropy entropysize mnemonicsize checksumsize =
+    ( KnownNat entropysize, KnownNat mnemonicsize, KnownNat checksumsize
+    , NatWithinBound Int entropysize
+    , NatWithinBound Int mnemonicsize
+    , NatWithinBound Int checksumsize
+    , ValidEntropySize entropysize
+    , MnemonicWords entropysize ~ mnemonicsize
+    , CheckSumBits entropysize ~ checksumsize
+    )
+
 wordsToEntropy :: forall entropysize checksumsize numbermnemonicword
-                . ( KnownNat entropysize, KnownNat checksumsize, KnownNat numbermnemonicword
-                  , NatWithinBound Int entropysize, NatWithinBound Int numbermnemonicword
-                  , ValidEntropySize entropysize, CheckSumBits entropysize ~ checksumsize, MnemonicWords entropysize ~ numbermnemonicword
-                  )
+                . ConsistentEntropy entropysize numbermnemonicword checksumsize
                => MnemonicSentence numbermnemonicword
                -> Maybe (Entropy entropysize)
 wordsToEntropy ms =
@@ -159,8 +183,7 @@ wordsToEntropy ms =
     -- mw  = natVal (Proxy @mw)
 
 -- | Given an entropy of size n, Create a list
-entropyToWords :: forall n csz mw
-                . (KnownNat n, KnownNat csz, KnownNat mw, NatWithinBound Int n, NatWithinBound Int mw, ValidEntropySize n, CheckSumBits n ~ csz, MnemonicWords n ~ mw)
+entropyToWords :: forall n csz mw . ConsistentEntropy n mw csz
                => Entropy n
                -> MnemonicSentence mw
 entropyToWords (Entropy bs (Checksum w)) =
@@ -212,8 +235,7 @@ runTest tv =
   where
     testVectorWIndex' = map wordIndex . testVectorWIndex
 
-    go :: forall n csz mw
-        . (KnownNat n, KnownNat csz, KnownNat mw, NatWithinBound Int mw, NatWithinBound Int n, ValidEntropySize n, CheckSumBits n ~ csz, MnemonicWords n ~ mw)
+    go :: forall n csz mw . ConsistentEntropy n mw csz
        => Proxy n -> Test
     go proxyN = CheckPlan ("test " <> fromList (show $ natVal proxyN)) $ do
         case toEntropy @n (testVectorInput tv) of
