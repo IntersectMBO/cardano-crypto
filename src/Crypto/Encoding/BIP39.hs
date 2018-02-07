@@ -9,6 +9,7 @@
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE RecordWildCards      #-}
 module Crypto.Encoding.BIP39
     ( Entropy
     , MnemonicSentence
@@ -36,7 +37,7 @@ import           Foundation.Check
 import           Data.Bits
 import           Data.Monoid
 import           Data.Word
-import           Data.List (intersperse)
+import           Data.List (intersperse, elemIndex)
 import qualified Data.ByteArray as BA (index)
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
@@ -59,8 +60,12 @@ import qualified Crypto.Encoding.BIP39.English as English (words)
 -- Basic Definitions
 ------------------------------------------------------------------------
 
-data Dictionary = Dictionary (WordIndex -> String)
-                             String -- ^ joining string (e.g. space for english)
+data Dictionary = Dictionary
+    { dictionaryIndexToWord :: WordIndex -> String
+    , dictionaryWordToIndex :: String -> WordIndex
+    , dictionaryWordSeparator :: String
+        -- ^ joining string (e.g. space for english)
+    }
 
 type MnemonicSentence (mw :: Nat) = ListN.ListN mw WordIndex
 
@@ -151,13 +156,13 @@ sentenceToSeed :: MnemonicSentence mw -- ^ Mmenomic sentence of mw words
                -> Dictionary          -- ^ Dictionary of words/indexes
                -> Passphrase          -- ^ Binary Passphrase used to generate
                -> Seed
-sentenceToSeed mw (Dictionary toWord join) passphrase =
+sentenceToSeed mw Dictionary{..} passphrase =
     PBKDF2.generate (PBKDF2.prfHMAC SHA512)
                     (PBKDF2.Parameters 2048 64)
                     sentence
                     (toData ("mnemonic" `mappend` passphrase))
   where
-    sentence = toData $ mconcat $ intersperse join $ map toWord $ ListN.unListN mw
+    sentence = toData $ mconcat $ intersperse dictionaryWordSeparator $ map dictionaryIndexToWord $ ListN.unListN mw
     toData = String.toBytes String.UTF8
 
 tests :: Test
@@ -192,7 +197,8 @@ runTest tv =
             Just e -> do
                 let w = entropyToWords e
                     dictLookup (WordIndex x) = English.words !! fromIntegral x
-                    seed = sentenceToSeed w (Dictionary dictLookup " ") "TREZOR"
+                    dictRevLookup x = maybe (error $ "word not in the english dictionary: " <> toList x) (wordIndex . fromIntegral) $ x `elemIndex` English.words
+                    seed = sentenceToSeed w (Dictionary dictLookup dictRevLookup " ") "TREZOR"
                 validate "words equal" (ListN.unListN w === testVectorWIndex' tv)
                 validate "seed equal" (seed === testVectorSeed tv)
 
