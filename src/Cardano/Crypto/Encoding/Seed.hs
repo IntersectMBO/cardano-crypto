@@ -1,6 +1,5 @@
 {-# LANGUAGE Rank2Types           #-}
 {-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE KindSignatures       #-}
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE TypeApplications     #-}
@@ -8,8 +7,6 @@
 {-# LANGUAGE ConstraintKinds      #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
-
-{-# LANGUAGE AllowAmbiguousTypes  #-}
 
 -- | implementation of the proposal specification for Paper Wallet
 -- see https://github.com/input-output-hk/cardano-specs/blob/master/proposals/0001-PaperWallet.md
@@ -30,8 +27,8 @@ module Cardano.Crypto.Encoding.Seed
     ( Entropy
     , Passphrase
     , MnemonicSentence
-    , freeze
-    , recover
+    , scramble
+    , unscramble
     ) where
 
 import Foundation
@@ -57,58 +54,70 @@ constant = "IOHK"
 iterations :: Int
 iterations = 10000
 
--- | freeze the given mnemonic word with the given passphrase into a slightly
--- longer mnemonic sentence called _scramble words_.
+-- | scamble the given entropy into an entropy slighly larger.
 --
--- The function is called 'freeze
-freeze :: forall entropysizeI entropysizeO mnemonicsize scramblesize csI csO randomly
-        . ( ConsistentEntropy entropysizeI mnemonicsize csI
-          , ConsistentEntropy entropysizeO scramblesize csO
-          , (mnemonicsize + IVSize) ~ scramblesize
-          , MonadRandom randomly
-          )
-       => MnemonicSentence mnemonicsize
-       -> Passphrase
-       -> randomly (MnemonicSentence scramblesize)
-freeze mnemonics passphrase = do
+-- This entropy can then be used to be converted to a mnemonic sentence:
+--
+-- @
+-- freeze mnemonics passphrase = entropyToWords <$> scramble entropy passphrase
+--   where
+--     entropy = case wordsToEntropy mnemonics of
+--         Nothing -> error "mnemonic to entropy failed"
+--         Just e  -> e
+-- @
+scramble :: forall entropysizeI entropysizeO mnemonicsize scramblesize csI csO randomly
+         . ( ConsistentEntropy entropysizeI mnemonicsize csI
+           , ConsistentEntropy entropysizeO scramblesize csO
+           , (mnemonicsize + IVSize) ~ scramblesize
+           , (entropysizeI + 32) ~ entropysizeO
+           , MonadRandom randomly
+           )
+         => Entropy entropysizeI -> Passphrase -> randomly (Entropy entropysizeO)
+scramble e passphrase = do
     iv <- getRandomBytes ivSizeBytes
     let salt = iv <> constant
     let otp = PBKDF2.generate (PBKDF2.prfHMAC SHA512)
                     (PBKDF2.Parameters iterations entropySize)
                     passphrase
                     salt
-    let ee = B.pack $ fmap f $ zip (B.unpack otp) (B.unpack entropy)
+    let ee = B.pack $ fmap (uncurry xor) $ zip (B.unpack otp) (B.unpack $ entropyRaw e)
     pure $ case toEntropy @entropysizeO (iv <> ee) of
-        Nothing -> error "entropy generated error"
-        Just e' -> entropyToWords @entropysizeO e'
+        Nothing -> error "scramble: the function BIP39.toEntropy returned an unexpected error"
+        Just e' -> e'
   where
-    f (a,b) = a `xor` b
-    entropy = entropyRaw $ case wordsToEntropy @entropysizeI mnemonics of
-        Nothing -> error "mnemonic to entropy failed"
-        Just e  -> e
     entropySize = fromIntegral (natVal (Proxy @entropysizeI)) `div` 8
 
--- | recover the original mnemonic words from the scramble words (the input)
--- and the passphrase.
+-- |
+-- The reverse operation of 'scramble'
 --
-recover :: forall entropysizeI entropysizeO mnemonicsize scramblesize csI csO
-         . ( ConsistentEntropy entropysizeI scramblesize csI
-           , ConsistentEntropy entropysizeO mnemonicsize csO
-           , (mnemonicsize + IVSize) ~ scramblesize
-           )
-        => MnemonicSentence scramblesize
-        -> Passphrase
-        -> MnemonicSentence mnemonicsize
-recover scramble passphrase =
-    let ee = B.pack $ fmap f $ zip (B.unpack otp) (B.unpack entropy)
+-- This function recover the original entropy from the given scrambled entropy
+-- and the associated password.
+--
+-- @
+-- recover scrambled passphrase = entropyToWords @entropysizeO .
+--     unscramble @entropysizeI @entropysizeO entropyScrambled passphrase
+--   where
+--     entropyScrambled = case wordsToEntropy @entropysizeI scrambled of
+--         Nothing -> error "mnemonic to entropy failed"
+--         Just e  -> e
+-- @
+--
+unscramble :: forall entropysizeI entropysizeO mnemonicsize scramblesize csI csO
+           . ( ConsistentEntropy entropysizeI scramblesize csI
+             , ConsistentEntropy entropysizeO mnemonicsize csO
+             , (mnemonicsize + IVSize) ~ scramblesize
+             , (entropysizeO + 32) ~ entropysizeI
+             )
+          => Entropy entropysizeI
+          -> Passphrase
+          -> Entropy entropysizeO
+unscramble e passphrase =
+    let ee = B.pack $ fmap (uncurry xor) $ zip (B.unpack otp) (B.unpack eraw)
      in case toEntropy @entropysizeO (iv <> ee) of
-          Nothing -> error "entropy generated error"
-          Just e' -> entropyToWords @entropysizeO e'
+         Nothing -> error "unscramble: the function BIP39.toEntropy returned an unexpected error"
+         Just e' -> e'
   where
-    f (a,b) = a `xor` b
-    (iv, entropy) = B.splitAt ivSizeBytes $ entropyRaw $ case wordsToEntropy @entropysizeI scramble of
-        Nothing -> error "mnemonic to entropy failed"
-        Just e  -> e
+    (iv, eraw) = B.splitAt ivSizeBytes (entropyRaw e)
     salt = iv <> constant
     otp = PBKDF2.generate (PBKDF2.prfHMAC SHA512)
                   (PBKDF2.Parameters iterations entropySize)
