@@ -48,6 +48,7 @@ test-suite cardano-crypto-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
+  other-modules:       TestVectors.PaperWallet
   build-depends:       base
                      , bytestring
                      , memory
