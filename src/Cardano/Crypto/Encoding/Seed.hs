@@ -34,6 +34,8 @@ module Cardano.Crypto.Encoding.Seed
     , Passphrase
     , MnemonicSentence
     , ConsistentEntropy
+    , ScrambleIV
+    , mkScrambleIV
     , scramble
     , unscramble
 
@@ -42,13 +44,16 @@ module Cardano.Crypto.Encoding.Seed
     ) where
 
 import Foundation
+import Foundation.Check
 import Basement.Nat
+import Crypto.Error
 
 import           Data.Bits (xor)
 import           Data.List (zip)
 import Crypto.Encoding.BIP39
 import qualified Crypto.KDF.PBKDF2 as PBKDF2
-import Crypto.Random (MonadRandom (..))
+import           Basement.Sized.List (ListN)
+import qualified Basement.Sized.List as ListN
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
@@ -66,36 +71,49 @@ constant = "IOHK"
 iterations :: Int
 iterations = 10000
 
+newtype ScrambleIV = ScrambleIV ByteString
+    deriving (Eq,Ord,Show,Typeable)
+instance Arbitrary ScrambleIV where
+    arbitrary = do
+        l <- arbitrary :: Gen (ListN 4 Word8)
+        pure $ throwCryptoError $ mkScrambleIV $ B.pack $ ListN.unListN l
+
+mkScrambleIV :: ByteString -> CryptoFailable ScrambleIV
+mkScrambleIV bs
+    | B.length bs == 4 = CryptoPassed (ScrambleIV bs)
+    | otherwise        = CryptoFailed CryptoError_IvSizeInvalid
+
 -- | scamble the given entropy into an entropy slighly larger.
 --
 -- This entropy can then be used to be converted to a mnemonic sentence:
 --
 -- @
--- freeze mnemonics passphrase = entropyToWords <$> scramble entropy passphrase
+-- freeze iv mnemonics passphrase = entropyToWords . scramble iv entropy passphrase
 --   where
 --     entropy = case wordsToEntropy mnemonics of
 --         Nothing -> error "mnemonic to entropy failed"
 --         Just e  -> e
 -- @
-scramble :: forall entropysizeI entropysizeO mnemonicsize scramblesize csI csO randomly
+scramble :: forall entropysizeI entropysizeO mnemonicsize scramblesize csI csO
          . ( ConsistentEntropy entropysizeI mnemonicsize csI
            , ConsistentEntropy entropysizeO scramblesize csO
            , (mnemonicsize + IVSizeWords) ~ scramblesize
            , (entropysizeI + IVSizeBits)  ~ entropysizeO
-           , MonadRandom randomly
            )
-         => Entropy entropysizeI -> Passphrase -> randomly (Entropy entropysizeO)
-scramble e passphrase = do
-    iv <- getRandomBytes ivSizeBytes
+         => ScrambleIV
+         -> Entropy entropysizeI
+         -> Passphrase
+         -> Entropy entropysizeO
+scramble (ScrambleIV iv) e passphrase =
     let salt = iv <> constant
-    let otp = PBKDF2.fastPBKDF2_SHA512
+        otp = PBKDF2.fastPBKDF2_SHA512
                     (PBKDF2.Parameters iterations entropySize)
                     passphrase
                     salt
-    let ee = B.pack $ fmap (uncurry xor) $ zip (B.unpack otp) (B.unpack $ entropyRaw e)
-    pure $ case toEntropy @entropysizeO (iv <> ee) of
-        Nothing -> error "scramble: the function BIP39.toEntropy returned an unexpected error"
-        Just e' -> e'
+        ee = B.pack $ fmap (uncurry xor) $ zip (B.unpack otp) (B.unpack $ entropyRaw e)
+     in case toEntropy @entropysizeO (iv <> ee) of
+            Nothing -> error "scramble: the function BIP39.toEntropy returned an unexpected error"
+            Just e' -> e'
   where
     entropySize = fromIntegral (natVal (Proxy @entropysizeI)) `div` 8
 

@@ -305,9 +305,8 @@ testCardanoCryptoEncoding = Group "paper-wallet"
           )
        => Proxy n
        -> Test
-    go p = Property ("unscramble . scramble @" <> sz <> " == id") $ \seed (e :: PW.Entropy n) p ->
-        let chachadrg = drgNewTest seed
-            s = fst $ withDRG chachadrg (PW.scramble @n e p)
+    go p = Property ("unscramble . scramble @" <> sz <> " == id") $ \iv (e :: PW.Entropy n) p ->
+        let s = PW.scramble @n iv e p
             u = PW.unscramble s p
          in e === u
       where
