@@ -1,6 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE FlexibleContexts #-}
 module Main where
 
 import           Control.Monad
@@ -8,8 +12,8 @@ import           Control.Monad
 import           Basement.From
 import           Basement.Nat
 import           Basement.Bounded
-import           Data.Proxy
 import           Foundation.Collection (nonEmpty_)
+import           Foundation (IsList(..))
 import           Foundation.Check
 import           Foundation.Check.Main
 
@@ -21,10 +25,17 @@ import qualified Cardano.Crypto.Wallet.Pure as PureWallet
 import qualified Data.ByteString as B
 import qualified Data.ByteArray as B (convert)
 import           Crypto.Error
+import           Crypto.Random (drgNewTest, withDRG)
+import qualified Crypto.Random as Random
 import           Data.Word
 import           Data.Bits
+import           Data.Monoid ((<>))
+import           Data.Proxy
 
-import qualified Crypto.Encoding.BIP39 as BIP39 (tests)
+import qualified Crypto.Encoding.BIP39 as BIP39
+import qualified Cardano.Crypto.Encoding.Seed as PW
+
+import           TestVectors.PaperWallet
 
 noPassphrase :: B.ByteString
 noPassphrase = ""
@@ -62,7 +73,7 @@ chooseInteger :: forall n . KnownNat n => Integer -> Proxy n -> Gen Integer
 chooseInteger base _ = ((+) base) . fromInteger . from . unZn <$> (arbitrary :: Gen (Zn n))
 
 instance Show Ed where
-    show (Ed i _) = "Edwards25519.Scalar " ++ show i
+    show (Ed i _) = "Edwards25519.Scalar " <> show i
 instance Eq Ed where
     (Ed x _) == (Ed y _) = x == y
 instance Arbitrary Ed where
@@ -277,6 +288,36 @@ testChangePassphrase dscheme =
 seedToSecret :: B.ByteString -> CryptoFailable EdVariant.SecretKey
 seedToSecret = EdVariant.secretKey
 
+-- -------------------------------------------------------------------------- --
+--                            Encoding/Seed                                   --
+-- -------------------------------------------------------------------------- --
+
+testCardanoCryptoEncoding :: Test
+testCardanoCryptoEncoding = Group "paper-wallet"
+    [ go (Proxy @128)
+    , go (Proxy @160)
+    , go (Proxy @192)
+    , go (Proxy @224)
+    ]
+  where
+    go :: forall n m s
+        . ( PW.ConsistentEntropy n m s
+          , PW.ConsistentEntropy (n + PW.IVSizeBits) (m + PW.IVSizeWords) (BIP39.CheckSumBits (n + PW.IVSizeBits))
+          , Arbitrary (PW.Entropy n)
+          )
+       => Proxy n
+       -> Test
+    go p = Property ("unscramble . scramble @" <> sz <> " == id") $ \iv (e :: PW.Entropy n) p ->
+        let s = PW.scramble @n iv e p
+            u = PW.unscramble s p
+         in e === u
+      where
+         sz = fromList $ show $ natVal p
+
+-- -------------------------------------------------------------------------- --
+--                              Main                                          --
+-- -------------------------------------------------------------------------- --
+
 main :: IO ()
 main = defaultMain $ Group "cardano-crypto"
     [ Group "edwards25519-arithmetic" testEdwards25519
@@ -284,6 +325,8 @@ main = defaultMain $ Group "cardano-crypto"
     , Group "encrypted" (testEncrypted DerivationScheme1)
     , Group "change-pass" (testChangePassphrase DerivationScheme1)
     , BIP39.tests
+    , testCardanoCryptoEncoding
+    , testVectorPaperWallet
     ]
     {-
     , Group "edwards25519-ed25519variant" testVariant
