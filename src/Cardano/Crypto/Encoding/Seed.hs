@@ -48,8 +48,7 @@ import Foundation.Check
 import Basement.Nat
 import Crypto.Error
 
-import           Data.Bits (xor)
-import           Data.List (zip)
+import Data.ByteArray (xor, ScrubbedBytes)
 import Crypto.Encoding.BIP39
 import qualified Crypto.KDF.PBKDF2 as PBKDF2
 import           Basement.Sized.List (ListN)
@@ -106,11 +105,12 @@ scramble :: forall entropysizeI entropysizeO mnemonicsize scramblesize csI csO
          -> Entropy entropysizeO
 scramble (ScrambleIV iv) e passphrase =
     let salt = iv <> constant
+        otp :: ScrubbedBytes
         otp = PBKDF2.fastPBKDF2_SHA512
                     (PBKDF2.Parameters iterations entropySize)
                     passphrase
                     salt
-        ee = B.pack $ fmap (uncurry xor) $ zip (B.unpack otp) (B.unpack $ entropyRaw e)
+        ee = xor otp (entropyRaw e)
      in case toEntropy @entropysizeO (iv <> ee) of
             Nothing -> error "scramble: the function BIP39.toEntropy returned an unexpected error"
             Just e' -> e'
@@ -142,13 +142,14 @@ unscramble :: forall entropysizeI entropysizeO mnemonicsize scramblesize csI csO
           -> Passphrase
           -> Entropy entropysizeO
 unscramble e passphrase =
-    let ee = B.pack $ fmap (uncurry xor) $ zip (B.unpack otp) (B.unpack eraw)
+    let ee = xor otp eraw
      in case toEntropy @entropysizeO ee of
          Nothing -> error "unscramble: the function BIP39.toEntropy returned an unexpected error"
          Just e' -> e'
   where
     (iv, eraw) = B.splitAt ivSizeBytes (entropyRaw e)
     salt = iv <> constant
+    otp :: ScrubbedBytes
     otp = PBKDF2.fastPBKDF2_SHA512
                   (PBKDF2.Parameters iterations entropySize)
                   passphrase
