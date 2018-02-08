@@ -63,13 +63,13 @@ mkTest :: forall n ns mw mws csz cszs
 mkTest _ (passphrase, mnemonicwords, scrambledref, iv) = Property (show mnemonicwords) $
     let dictLookup x = BIP39English.words !! fromIntegral (unWordIndex x)
         dictRevLookup x = maybe (error $ "word not in the english dictionary: " <>  x) (wordIndex . fromIntegral) $ x `elemIndex` BIP39English.words
-        mw :: MnemonicSentence mw = ListN.toListN_ $ dictRevLookup <$> ListN.unListN mnemonicwords
+        mw = ListN.map dictRevLookup mnemonicwords
     in case wordsToEntropy @n mw of
         Nothing -> error "cannot generate entropy from mnemonic in test vector..."
         Just e  ->
             let scrambled = scramble @n iv e passphrase
                 mws       = entropyToWords @ns scrambled
-                mw' :: ListN mws String = ListN.toListN_ $ dictLookup <$> ListN.unListN mws
+                mw'       = ListN.map dictLookup mws
              in scrambledref === mw'
 
 testVector128 :: [(Passphrase, ListN 12 String, ListN 15 String, ScrambleIV)]
