@@ -19,6 +19,7 @@
 -- * <http://eprint.iacr.org/2008/522.pdf>
 --
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DataKinds #-}
 
 module Crypto.Math.Edwards25519
     (
@@ -54,6 +55,9 @@ import           Data.ByteString             (ByteString)
 import qualified Data.ByteString             as B (append, reverse)
 import           Data.Hashable               (Hashable)
 import           GHC.Stack
+
+import           Crypto.Math.Bytes (Bytes)
+import qualified Crypto.Math.Bytes as Bytes
 
 -- | Represent a scalar in the base field
 newtype Scalar = Scalar { unScalar :: ByteString }
