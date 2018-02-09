@@ -24,6 +24,9 @@ library
                        Cardano.Crypto.Wallet.Types
                        Cardano.Crypto.Wallet.Pure
                        Crypto.Math.Edwards25519
+                       Crypto.Math.Bits
+                       Crypto.Math.Bytes
+                       Crypto.Math.NatMath
                        Crypto.ECC.Ed25519Donna
                        Crypto.Encoding.BIP39
                        Crypto.Encoding.BIP39.English

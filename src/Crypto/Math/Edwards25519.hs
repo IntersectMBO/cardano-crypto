@@ -28,9 +28,12 @@ module Crypto.Math.Edwards25519
     , Signature(..)
     -- * smart constructor & destructor
     , scalar
+    , scalarP
     , unScalar
     , pointCompressed
+    , pointCompressedP
     , unPointCompressed
+    , unPointCompressedP
     -- * Arithmetic
     , scalarFromInteger
     , scalarAdd
@@ -85,6 +88,14 @@ scalar bs
     | B.length bs /= 32 = error "invalid scalar"
     | otherwise         = Scalar bs
 
+scalarP :: Bytes 32 -> Scalar
+scalarP = scalar . B.pack . Bytes.unpack
+
+
+-- | Check if a scalar is valid and all the bits properly set/cleared
+-- scalarValid :: Scalar -> Bool
+-- scalarValid _s = True -- TODO
+
 -- | Smart constructor to create a compress point binary
 --
 -- Check if the length is of expected size
@@ -92,6 +103,12 @@ pointCompressed :: HasCallStack => ByteString -> PointCompressed
 pointCompressed bs
     | B.length bs /= 32 = error ("invalid compressed point: expecting 32 bytes, got " ++ show (B.length bs) ++ " bytes")
     | otherwise         = PointCompressed bs
+
+pointCompressedP :: Bytes 32 -> PointCompressed
+pointCompressedP = pointCompressed . B.pack . Bytes.unpack
+
+unPointCompressedP :: PointCompressed -> Bytes 32
+unPointCompressedP (PointCompressed bs) = Bytes.pack $ B.unpack bs
 
 -- | Create a signature using a variant of ED25519 signature
 --
