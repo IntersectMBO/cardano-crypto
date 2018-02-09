@@ -76,7 +76,7 @@ fq n
 fq :: Integer -> Fq
 fq = Fq
 
--- Create a Ed25519 scalar
+-- | Create a Ed25519 scalar
 --
 -- Only check that the length is of expected size (32 bytes), no effort is made for the scalar
 -- to be in the right base field range on purpose.
@@ -109,6 +109,7 @@ sign a salt msg =
     h = sha512_modq (unPointCompressed pR `B.append` unPointCompressed pA `B.append` B.convert msg)
     s = (unFq r + unFq h * (fromBytes (unScalar a))) `mod` q
 
+-- | Verify a signature
 verify :: B.ByteArrayAccess msg => PointCompressed -> msg -> Signature -> Bool
 verify pA msg (Signature signature) =
     pS `pointEqual` ePointAdd (ePointDecompress pR) hA
@@ -208,6 +209,7 @@ recoverX y xSign = x''
 -- | Unserialize little endian
 fromBytes :: ByteString -> Integer
 fromBytes = os2ip . B.reverse
+
 -- | Serialize little endian of a given size (32 bytes)
 toBytes :: Integer -> ByteString
 toBytes = B.reverse . i2ospOf_ 32
