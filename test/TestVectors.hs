@@ -7,6 +7,7 @@ module Main where
 
 import Data.String.Conv
 import Data.Bifunctor
+import Data.Bits
 import Data.Monoid
 import Data.Word
 import Data.List (findIndex)
@@ -59,7 +60,19 @@ runTest tv@TestVector{..} = case (T.splitOn "/" path) of
       in go prv' xs
 
     toChaincode :: T.Text -> Word32
-    toChaincode = read . toS . T.replace "'" mempty
+    toChaincode t
+        | "'" `T.isInfixOf` t = toHard . read . toS . T.replace "'" mempty $ t
+        | otherwise           = toSoft . read . toS . T.replace "'" mempty $ t
+
+    toHard :: Word32 -> Word32
+    toHard w
+        | w >= 0x80000000 = error ("invalid harden index: " ++ show w)
+        | otherwise       = (w .|. 0x80000000)
+
+    toSoft :: Word32 -> Word32
+    toSoft w
+        | w >= 0x80000000 = error ("invalid harden index: " ++ show w)
+        | otherwise       = w
 
 renderXprv :: XPrv -> T.Text
 renderXprv = toS . Hex.encode . unXPrv
@@ -101,7 +114,7 @@ testVectors =
   , def { path = "m/0'/1'" }
   , def { path = "m/0'/1'/2'" }
   , def { path = "m/0'/1'/2'/2'" }
-  , def { path = "m/0'/1'/2'/2'/1000000000'" }
+  , def { path = "m/0'/1'/2'/2'/10000'" }
   , def2
   , def2 { path = "m/0'" }
   ]
