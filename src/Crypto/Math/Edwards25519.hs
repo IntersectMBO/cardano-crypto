@@ -19,6 +19,7 @@
 -- * <http://eprint.iacr.org/2008/522.pdf>
 --
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DataKinds #-}
 
 module Crypto.Math.Edwards25519
     (
@@ -28,9 +29,12 @@ module Crypto.Math.Edwards25519
     , Signature(..)
     -- * smart constructor & destructor
     , scalar
+    , scalarP
     , unScalar
     , pointCompressed
+    , pointCompressedP
     , unPointCompressed
+    , unPointCompressedP
     -- * Arithmetic
     , scalarFromInteger
     , scalarAdd
@@ -51,6 +55,9 @@ import           Data.ByteString             (ByteString)
 import qualified Data.ByteString             as B (append, reverse)
 import           Data.Hashable               (Hashable)
 import           GHC.Stack
+
+import           Crypto.Math.Bytes (Bytes)
+import qualified Crypto.Math.Bytes as Bytes
 
 -- | Represent a scalar in the base field
 newtype Scalar = Scalar { unScalar :: ByteString }
@@ -76,7 +83,7 @@ fq n
 fq :: Integer -> Fq
 fq = Fq
 
--- Create a Ed25519 scalar
+-- | Create a Ed25519 scalar
 --
 -- Only check that the length is of expected size (32 bytes), no effort is made for the scalar
 -- to be in the right base field range on purpose.
@@ -85,6 +92,14 @@ scalar bs
     | B.length bs /= 32 = error "invalid scalar"
     | otherwise         = Scalar bs
 
+scalarP :: Bytes 32 -> Scalar
+scalarP = scalar . B.pack . Bytes.unpack
+
+
+-- | Check if a scalar is valid and all the bits properly set/cleared
+-- scalarValid :: Scalar -> Bool
+-- scalarValid _s = True -- TODO
+
 -- | Smart constructor to create a compress point binary
 --
 -- Check if the length is of expected size
@@ -92,6 +107,12 @@ pointCompressed :: HasCallStack => ByteString -> PointCompressed
 pointCompressed bs
     | B.length bs /= 32 = error ("invalid compressed point: expecting 32 bytes, got " ++ show (B.length bs) ++ " bytes")
     | otherwise         = PointCompressed bs
+
+pointCompressedP :: Bytes 32 -> PointCompressed
+pointCompressedP = pointCompressed . B.pack . Bytes.unpack
+
+unPointCompressedP :: PointCompressed -> Bytes 32
+unPointCompressedP (PointCompressed bs) = Bytes.pack $ B.unpack bs
 
 -- | Create a signature using a variant of ED25519 signature
 --
@@ -109,6 +130,7 @@ sign a salt msg =
     h = sha512_modq (unPointCompressed pR `B.append` unPointCompressed pA `B.append` B.convert msg)
     s = (unFq r + unFq h * (fromBytes (unScalar a))) `mod` q
 
+-- | Verify a signature
 verify :: B.ByteArrayAccess msg => PointCompressed -> msg -> Signature -> Bool
 verify pA msg (Signature signature) =
     pS `pointEqual` ePointAdd (ePointDecompress pR) hA
@@ -208,6 +230,7 @@ recoverX y xSign = x''
 -- | Unserialize little endian
 fromBytes :: ByteString -> Integer
 fromBytes = os2ip . B.reverse
+
 -- | Serialize little endian of a given size (32 bytes)
 toBytes :: Integer -> ByteString
 toBytes = B.reverse . i2ospOf_ 32

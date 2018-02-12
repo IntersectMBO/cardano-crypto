@@ -25,7 +25,11 @@ library
                        Cardano.Crypto.Wallet.Pure
                        Cardano.Crypto.Encoding.Seed
                        Crypto.Math.Edwards25519
+                       Crypto.Math.Bits
+                       Crypto.Math.Bytes
+                       Crypto.Math.NatMath
                        Crypto.ECC.Ed25519Donna
+                       Crypto.ECC.Ed25519BIP32
                        Crypto.Encoding.BIP39
                        Crypto.Encoding.BIP39.English
   build-depends:       base >= 4.7 && < 5
