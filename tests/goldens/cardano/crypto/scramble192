@@ -1,0 +1,7 @@
+# Test Vector 1
+TestVector
+input = "legal winner thank year wave sausage worth useful legal winner thank yellow clean inch leave picnic file debris"
+iv = "00000000"
+passphrase = ""
+shielded_input = "shop magnet gaze course option obscure mouse wing flat ticket decade ill monster tell vivid simple practice trend abandon abandon arm"
+

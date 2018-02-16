@@ -31,6 +31,7 @@ module Crypto.Encoding.BIP39
     , ConsistentEntropy
     , CheckSumBits
     , MnemonicWords
+    , ValidEntropySize
     -- * Tests
     , tests
     ) where
@@ -43,6 +44,8 @@ import           Basement.NormalForm
 import           Basement.Compat.Typeable
 
 import           Foundation.Check
+import           Inspector.Display
+import           Inspector.Parser
 
 import           Control.Monad (replicateM)
 import           Data.Bits
@@ -141,6 +144,14 @@ instance Arbitrary (Entropy 224) where
     arbitrary = fromMaybe (error "arbitrary (Entropy 224)") . toEntropy . BS.pack <$> replicateM 28 arbitrary
 instance Arbitrary (Entropy 256) where
     arbitrary = fromMaybe (error "arbitrary (Entropy 256)") . toEntropy . BS.pack <$> replicateM 32 arbitrary
+instance Display (Entropy n) where
+    display (Entropy r _) = displayByteArrayAccess r
+instance (KnownNat n, KnownNat csz, NatWithinBound Int n, ValidEntropySize n, CheckSumBits n ~ csz) => HasParser (Entropy n) where
+    getParser = do
+        bs <- strParser >>= parseByteArray
+        case toEntropy bs of
+            Nothing -> reportError (Expected "Entropy" "not the correct size")
+            Just r  -> pure r
 
 -- | Get the raw binary associated with the entropy
 entropyRaw :: Entropy n -> ByteString
