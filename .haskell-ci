@@ -10,15 +10,18 @@ compiler: ghc-8.4-testvectors ghc-8.4-alpha2
 option: testvectors flag=cardano-crypto:test-vectors
 
 # builds
-build: ghc-8.0
-build: ghc-8.0-testvectors testvectors
-build: ghc-8.2
-build: ghc-8.2-testvectors testvectors
-build: ghc-8.4 allowed-failure
-build: ghc-8.4-testvectors allowed-failure testvectors
+build: ghc-8.0 gitdep=inspector
+build: ghc-8.0-testvectors testvectors gitdep=inspector
+build: ghc-8.2 gitdep=inspector
+build: ghc-8.2-testvectors testvectors gitdep=inspector
+build: ghc-8.4 allowed-failure gitdep=inspector
+build: ghc-8.4-testvectors allowed-failure testvectors gitdep=inspector
 
 # packages
 package: '.'
+
+# deps:
+gitdep: inspector https://github.com/primetype/inspector c39d899e29acb8e37d58618ae3bf80aabf13d23c
 
 # extra builds
 hlint: allowed-failure

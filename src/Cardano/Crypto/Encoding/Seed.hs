@@ -41,7 +41,14 @@ module Cardano.Crypto.Encoding.Seed
 
     , IVSizeWords
     , IVSizeBits
+
+    , -- helpers
+      scrambleMnemonic
+    , MnemonicWords
     ) where
+
+import Inspector.Display
+import Inspector.Parser
 
 import Foundation
 import Foundation.Check
@@ -53,6 +60,7 @@ import Crypto.Encoding.BIP39
 import qualified Crypto.KDF.PBKDF2 as PBKDF2
 import           Basement.Sized.List (ListN)
 import qualified Basement.Sized.List as ListN
+import Data.ByteArray (ByteArrayAccess)
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
@@ -71,11 +79,19 @@ iterations :: Int
 iterations = 10000
 
 newtype ScrambleIV = ScrambleIV ByteString
-    deriving (Eq,Ord,Show,Typeable)
+    deriving (Eq,Ord,Show,Typeable,ByteArrayAccess)
 instance Arbitrary ScrambleIV where
     arbitrary = do
         l <- arbitrary :: Gen (ListN 4 Word8)
         pure $ throwCryptoError $ mkScrambleIV $ B.pack $ ListN.unListN l
+instance Display ScrambleIV where
+    display = displayByteArrayAccess
+instance HasParser ScrambleIV where
+    getParser = do
+        bs <- strParser >>= parseByteArray
+        case mkScrambleIV bs of
+            CryptoFailed err -> reportError (Expected "ScrambleIV" (show err))
+            CryptoPassed r   -> pure r
 
 mkScrambleIV :: ByteString -> CryptoFailable ScrambleIV
 mkScrambleIV bs
@@ -116,6 +132,26 @@ scramble (ScrambleIV iv) e passphrase =
             Just e' -> e'
   where
     entropySize = fromIntegral (natVal (Proxy @entropysizeI)) `div` 8
+
+-- | helper function to scramble mnemonics
+scrambleMnemonic :: forall entropysizeI entropysizeO mnemonicsize scramblesize csI csO
+                 . ( ConsistentEntropy entropysizeI mnemonicsize csI
+                   , ConsistentEntropy entropysizeO scramblesize csO
+                   , (mnemonicsize + IVSizeWords) ~ scramblesize
+                   , (entropysizeI + IVSizeBits)  ~ entropysizeO
+                   )
+                 => Proxy entropysizeI
+                 -> ScrambleIV
+                 -> MnemonicSentence mnemonicsize
+                 -> Passphrase
+                 -> MnemonicSentence scramblesize
+scrambleMnemonic _ iv mw passphrase =
+      entropyToWords @entropysizeO
+    $ scramble @entropysizeI @entropysizeO iv entropy passphrase
+  where
+    entropy = case wordsToEntropy @entropysizeI mw of
+        Nothing -> error "mnemonic to entropy failed"
+        Just e  -> e
 
 -- |
 -- The reverse operation of 'scramble'

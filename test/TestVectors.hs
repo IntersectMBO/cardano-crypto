@@ -52,7 +52,7 @@ runTest tv@TestVector{..} = case (T.splitOn "/" path) of
   ("m":xs) -> go m xs
   where
     (_,_,_,m) = getInfo tv
-    
+
     go prv []     = prv
     go prv (x:xs) =
       let chainCode = toChaincode x
@@ -169,6 +169,7 @@ bip44 = [
 
 englishDict = BIP39.Dictionary
                 (\w -> BIP39English.words !! fromIntegral (BIP39.unWordIndex w))
+                (undefined)
                 " "
 
 getInfo :: TestVector -> (T.Text, T.Text, T.Text, XPrv)
@@ -178,7 +179,7 @@ getInfo tv =
             let seed64        = BIP39.sentenceToSeed @24 indexes englishDict "TREZOR"
                 seedTruncated = B.drop 32 seed64
                 m             = seedToMaster (Hex.encode seedTruncated) (pass tv)
-             in (toS (unwords w), toS (Hex.encode seed64), toS (Hex.encode seedTruncated), m) 
+             in (toS (unwords w), toS (Hex.encode seed64), toS (Hex.encode seedTruncated), m)
         TestVectorRaw seedRaw ->
              ("", "", toS seedRaw, seedToMaster seedRaw (pass tv))
 

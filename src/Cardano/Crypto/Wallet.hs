@@ -49,6 +49,8 @@ module Cardano.Crypto.Wallet
     , verify
     ) where
 
+import qualified Foundation as F
+
 import           Control.DeepSeq                 (NFData)
 import           Control.Arrow                   (second)
 import           Crypto.Error                    (throwCryptoError, CryptoFailable(..), CryptoError(..))
@@ -67,10 +69,19 @@ import           Cardano.Crypto.Wallet.Pure      ({-XPub (..),-} hFinalize,
                                                   hInitSeed)
 import           Cardano.Crypto.Wallet.Types
 
+import           Inspector.Display
+import           Inspector.Parser
+
 import           GHC.Stack
 
 newtype XPrv = XPrv EncryptedKey
     deriving (NFData, ByteArrayAccess)
+instance Display XPrv where
+    display = displayByteArrayAccess
+instance HasParser XPrv where
+    getParser = strParser >>= parseByteArray >>= \s -> case xprv (s :: ByteString) of
+        Left err -> reportError $ Expected "xPrv" (F.fromList err)
+        Right e  -> pure e
 
 data XPub = XPub
     { xpubPublicKey :: !ByteString
@@ -78,10 +89,22 @@ data XPub = XPub
     } deriving (Generic)
 
 instance NFData XPub
+instance Display XPub where
+    display = displayByteArrayAccess . unXPub
+instance HasParser XPub where
+    getParser = strParser >>= parseByteArray >>= \s -> case xpub (s :: ByteString) of
+        Left err -> reportError $ Expected "xPub" (F.fromList err)
+        Right e  -> pure e
 
 newtype XSignature = XSignature
     { unXSignature :: ByteString
     } deriving (Show, Eq, Ord, NFData, Hashable)
+instance Display XSignature where
+    display (XSignature bs) = displayByteArrayAccess bs
+instance HasParser XSignature where
+    getParser = strParser >>= parseByteArray >>= \s -> case xsignature s of
+        Left err -> reportError $ Expected "XSignature" (F.fromList err)
+        Right e  -> pure e
 
 -- | Generate a new XPrv
 --

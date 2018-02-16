@@ -1,0 +1,77 @@
+# Test Vector 1
+TestVector
+data-to-sign = "Hello World"
+derivation-scheme = "derivation-scheme1"
+passphrase = ""
+path = "m"
+signature = "dba9f69fcdeef77dfda4e98a32157808763327f848b8af535621567bb479772353db3c19c1218af857c8ea96bae45fc221a7bb90c4e30afb3cb076d2ec3e060d"
+words = "void come effort suffer camp survey warrior heavy shoot primary clutch crush"
+xPriv = "681b6cf0c1003fd4dfdddb3f8cd2c5b302360fb0423215674c254f87b50a3654de963286d8a29db1f857e2768489ba1e218ea5cedc5c4f2aebdd4b7321afdfe46912ecb63ae16566fa68bb4126b680b46cbb10eb7a720dfd2a64c848a15348366a65511c80b5dfa8ab705c9388879885fe7a48130967660d2bde8ffb71c1f869"
+xPub = "6912ecb63ae16566fa68bb4126b680b46cbb10eb7a720dfd2a64c848a15348366a65511c80b5dfa8ab705c9388879885fe7a48130967660d2bde8ffb71c1f869"
+
+# Test Vector 2
+TestVector
+data-to-sign = "Hello World"
+derivation-scheme = "derivation-scheme1"
+passphrase = ""
+path = "m/0'"
+signature = "ee3fbe1d09604c85daaaa4741d5b0d95b3a248844769fb552d5a810c4f77d07ac767f8a95fdd187a4f6cbbf9b60e14240670727a528afead73afc9c033ded703"
+words = "void come effort suffer camp survey warrior heavy shoot primary clutch crush"
+xPriv = "c2d431737cc6e83bca01670ee53fd4ae5296df68a35ab58f6c6d474086fb5e04bfa41f1f6111022155f8c4bd83247ca666176f618ff5fbef76afdfbb6428b344028433f00b98c86df9054ba06395f6dd6a6cb4e9bf632ef774d6e732d973c7c2235dff52dc74c676bd0ca2f6c6b4a7e80b837c02e57d30423467ee7ac806ea14"
+xPub = "028433f00b98c86df9054ba06395f6dd6a6cb4e9bf632ef774d6e732d973c7c2235dff52dc74c676bd0ca2f6c6b4a7e80b837c02e57d30423467ee7ac806ea14"
+
+# Test Vector 3
+TestVector
+data-to-sign = "Hello World"
+derivation-scheme = "derivation-scheme1"
+passphrase = ""
+path = "m/1'"
+signature = "8abb4687516fe472d2f15a41b203170274f472ee2d24a5c3c2ff19d944224af9537234e4a54d62d30f5e7a704cec90a2a5d578cbb809a99693527d479558310e"
+words = "void come effort suffer camp survey warrior heavy shoot primary clutch crush"
+xPriv = "f8e4e611edd7d0cb22c90ae102759e4e42e6474003f3b54fededa7a77d7b7e0410a3a324ada754aac7764182c9cf719ce0287bb19bf00bc33e7ed808c380e973eba13a70e0e38a1884043465852eef2011d8ce7133129fead64c8c12a85802a6a403bcb26cbbf1ef1736b12e8d2bb91cb70ada98f2c3359909523f3f2a189b4d"
+xPub = "eba13a70e0e38a1884043465852eef2011d8ce7133129fead64c8c12a85802a6a403bcb26cbbf1ef1736b12e8d2bb91cb70ada98f2c3359909523f3f2a189b4d"
+
+# Test Vector 4
+TestVector
+data-to-sign = "Hello World"
+derivation-scheme = "derivation-scheme1"
+passphrase = ""
+path = "m/0'/1'"
+signature = "15e751343b99129716d7c5a0d1eafc54406b7d1e96867c46ac4059f3ca273f164f2f828da24608fabd9434e42640e4ac14102a01f21000aea8cbd392d29f1e00"
+words = "void come effort suffer camp survey warrior heavy shoot primary clutch crush"
+xPriv = "c6750440c839bc6b0e68646be59108ed4957f000a4a20590bcd597b0ce1b0f0ddaa794480e26a1f1b6298a34c64b1a31beca42e3cb802e8609636505c895bba9b2be279a27038cf9c4d7c0348f861f54bcbba3c9b8329e4992e3cc989f7286b80492114dfbeb74a15b8cf76c944d6824a68e29a10b10fbe4fdb66bbb30d744f7"
+xPub = "b2be279a27038cf9c4d7c0348f861f54bcbba3c9b8329e4992e3cc989f7286b80492114dfbeb74a15b8cf76c944d6824a68e29a10b10fbe4fdb66bbb30d744f7"
+
+# Test Vector 5
+TestVector
+data-to-sign = "Hello World"
+derivation-scheme = "derivation-scheme1"
+passphrase = ""
+path = "m/0'/1'/2'"
+signature = "f91d01e98be3303a11be23e4e3d1225d1c7f453dc6c7965fdec017e81531147d03585a24c25c5672d94446d9052e1ea14e7d1d3d29c2998cde79d86b6562e001"
+words = "void come effort suffer camp survey warrior heavy shoot primary clutch crush"
+xPriv = "62a776b5646d488312566148ae834d8b890fc1a9ccc2a5c8f43588917f2cd70dee2e0567b1faa1ad453421877acbb6c1462947859d7706cfe89470cb1428ebcae5b35e052bce4df6aecca34f0fe3a80624ff4885ebec785880d43ebeaf99198566aed5f9aef14861c4f8c05c536761a5753431e8d286e8a2b2d6c49a5fc38b5c"
+xPub = "e5b35e052bce4df6aecca34f0fe3a80624ff4885ebec785880d43ebeaf99198566aed5f9aef14861c4f8c05c536761a5753431e8d286e8a2b2d6c49a5fc38b5c"
+
+# Test Vector 6
+TestVector
+data-to-sign = "Hello World"
+derivation-scheme = "derivation-scheme1"
+passphrase = ""
+path = "m/0'/1'/2'/2'"
+signature = "ea85f1df2d76ed3f22cd163de92ea51d7c8683e94f39688aa6ed6cd86708c4e1451858eaed1cc5ea68cdab6b9e5d83e4d0e1a6a2504064e46433adbf51a1a10d"
+words = "void come effort suffer camp survey warrior heavy shoot primary clutch crush"
+xPriv = "25acfa781f3ac302726bed0d5bb3d73f697099f2f42a4e814dd6e05918dddf0569adc727736a21cac1e0e9c4b5843a8d9fd0716dbe844dbe8132ab837e14f969b12a78199aadaef24c91370060968c8147c12841ab81779656ce0d34a450ea35a47299ad2fc034233e2254531a8fa6443f133a976d266272bb7de1519d5932c4"
+xPub = "b12a78199aadaef24c91370060968c8147c12841ab81779656ce0d34a450ea35a47299ad2fc034233e2254531a8fa6443f133a976d266272bb7de1519d5932c4"
+
+# Test Vector 7
+TestVector
+data-to-sign = "Hello World"
+derivation-scheme = "derivation-scheme1"
+passphrase = ""
+path = "m/0'/1'/2'/2'/1000000000'"
+signature = "2e9951bbbfdee93d6d50ae790a7d0475ae05793b35fe810672c0bcf47ba20095f5dbe46d51abbee8a928a4f9e11716247b5a1750fbcd2def09ac6ff1d9553c00"
+words = "void come effort suffer camp survey warrior heavy shoot primary clutch crush"
+xPriv = "7fadf81bbad7f55aa436c814e410becab8d0e9c26d4b4e4976bee119b915f00d3d9eac39d2fad8c3e4aa0fa4b8e053901ed6e13208d0986d5375a89fff2da2da809a0945602087460f2b70b5407c19ebadc4956de8d6cac54077cb703ac4952afad911b59cc914637abe7bad84990e05214852915c7e5e33f9d99fc81e1a5466"
+xPub = "809a0945602087460f2b70b5407c19ebadc4956de8d6cac54077cb703ac4952afad911b59cc914637abe7bad84990e05214852915c7e5e33f9d99fc81e1a5466"
+

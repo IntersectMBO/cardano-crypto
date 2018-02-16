@@ -224,7 +224,7 @@ fcp :: forall tag idx deriveType deriveMaterial
     -> [Word8]
     -> HMAC_SHA512
 fcp _ _ pidx c _ input =
-    hmacSHA512 key `Bytes.packSome` (Bytes.unpack tagValue ++ input ++ Bytes.unpack idx) -- $ hmacSHA512 key
+    hmacSHA512 key `Bytes.packSome` (Bytes.unpack tagValue ++ input ++ Bytes.unpack idx)
     -- hmacSHA512 key (Bytes.unpack tagValue ++ input ++ Bytes.unpack idx)
   where
     key = unChainCode c
