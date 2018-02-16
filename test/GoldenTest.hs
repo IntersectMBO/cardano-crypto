@@ -64,7 +64,7 @@ type GoldenPaperWallet n
       :> Payload "shielded_input" (Mnemonic 'English (MnemonicWords (n + IVSizeBits)))
 
 goldenPaperwallet :: GoldenT ()
-goldenPaperwallet = do
+goldenPaperwallet = group $ do
     golden (Proxy :: Proxy (GoldenPaperWallet 128)) $ \iv (Mnemonic input) pw ->
         Mnemonic (scrambleMnemonic (Proxy @128) iv input pw)
     golden (Proxy :: Proxy (GoldenPaperWallet 160)) $ \iv (Mnemonic input) pw ->
@@ -89,7 +89,11 @@ type HDWallet n
          )
 
 goldenHDWallet :: GoldenT ()
-goldenHDWallet = do
+goldenHDWallet = group $ do
+    summary "This test vectors uses the `Cardano.Crypto.Wallet` primitives to produce extended\n\
+            \private keys which are _encrypted_ with a passphrase. A passphrase can be empty as well.\n\
+            \Under this schema, we support only hardened key derivation."
+
     golden (Proxy :: Proxy (HDWallet 128)) runTest
     golden (Proxy :: Proxy (HDWallet 160)) runTest
     golden (Proxy :: Proxy (HDWallet 192)) runTest
