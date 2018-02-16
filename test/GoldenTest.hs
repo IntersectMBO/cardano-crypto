@@ -157,9 +157,13 @@ instance (KnownNat n, NatWithinBound Int n) => Arbitrary (Mnemonic 'English n) w
         r <- LN.replicateM @n (elements $ nonEmpty_ English.words)
         pure $ Mnemonic $ LN.map (dictionaryWordToIndex englishDict) r
 
-instance Display (Mnemonic 'English n) where
-    encoding _ = "a list of english words as defined in BIP39"
+instance (KnownNat n, NatWithinBound Int n) => Display (Mnemonic 'English n) where
     display (Mnemonic l) = "\"" <> intercalate " " (LN.unListN $ LN.map (dictionaryIndexToWord englishDict) l) <> "\""
+    encoding _ = "UTF8"
+    comment _ = Just $ "list of " <> show n <> " BIP39 english words"
+      where
+        n = natVal @n Proxy
+
 instance (KnownNat n, NatWithinBound Int n) => HasParser (Mnemonic 'English n) where
     getParser = do
         strs <- words <$> strParser

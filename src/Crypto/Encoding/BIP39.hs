@@ -146,6 +146,7 @@ instance Arbitrary (Entropy 256) where
     arbitrary = fromMaybe (error "arbitrary (Entropy 256)") . toEntropy . BS.pack <$> replicateM 32 arbitrary
 instance Display (Entropy n) where
     display (Entropy r _) = displayByteArrayAccess r
+    encoding _ = "hexadecimal"
 instance (KnownNat n, KnownNat csz, NatWithinBound Int n, ValidEntropySize n, CheckSumBits n ~ csz) => HasParser (Entropy n) where
     getParser = do
         bs <- strParser >>= parseByteArray

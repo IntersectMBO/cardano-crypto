@@ -86,7 +86,8 @@ instance Arbitrary ScrambleIV where
         pure $ throwCryptoError $ mkScrambleIV $ B.pack $ ListN.unListN l
 instance Display ScrambleIV where
     display = displayByteArrayAccess
-    encoding _ = "hex"
+    encoding _ = "hexadecimal"
+    comment _ = Just "valid value are only 4 bytes long (8 hexadecimal characters)"
 instance HasParser ScrambleIV where
     getParser = do
         bs <- strParser >>= parseByteArray
