@@ -184,6 +184,18 @@ static int index_is_hardened(uint32_t index)
 }
 
 
+static void serialize_index32(uint8_t *out, uint32_t index, derivation_scheme_mode mode)
+{
+	switch (mode) {
+	case DERIVATION_V1: /* BIG ENDIAN */
+		out[0] = index >> 24;
+		out[1] = index >> 16;
+		out[2] = index >> 8;
+		out[3] = index;
+		break;
+	}
+}
+
 void wallet_encrypted_derive_private
     (encrypted_key const *in,
      uint8_t const *pass, uint32_t const pass_len,
@@ -199,11 +211,7 @@ void wallet_encrypted_derive_private
 	uint8_t zl8[32];
 	uint8_t hmac_out[64];
 
-	/* little endian representation of index */
-	idxBuf[0] = index >> 24;
-	idxBuf[1] = index >> 16;
-	idxBuf[2] = index >> 8;
-	idxBuf[3] = index;
+	serialize_index32(idxBuf, index, mode);
 
 	unencrypt_start(pass, pass_len, in, priv_key);
 
@@ -265,11 +273,7 @@ int wallet_encrypted_derive_public
 	if (index_is_hardened(index))
 		return 1;
 
-	/* little endian representation of index */
-	idxBuf[0] = index >> 24;
-	idxBuf[1] = index >> 16;
-	idxBuf[2] = index >> 8;
-	idxBuf[3] = index;
+	serialize_index32(idxBuf, index, mode);
 
 	/* calculate Z */
 	HMAC_sha512_init(&hmac_ctx, cc_in, CHAIN_CODE_SIZE);
