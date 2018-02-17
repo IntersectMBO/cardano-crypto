@@ -196,6 +196,18 @@ static void serialize_index32(uint8_t *out, uint32_t index, derivation_scheme_mo
 	}
 }
 
+static void add_left(ed25519_secret_key res_key, uint8_t *z, ed25519_secret_key priv_key, derivation_scheme_mode mode)
+{
+	uint8_t zl8[32];
+
+	memset(zl8, 0, 32);
+	/* get 8 * Zl */
+	multiply8(zl8, z, 32);
+
+	/* Kl = 8*Zl + parent(K)l */
+	cardano_crypto_ed25519_scalar_add(zl8, priv_key, res_key);
+}
+
 void wallet_encrypted_derive_private
     (encrypted_key const *in,
      uint8_t const *pass, uint32_t const pass_len,
@@ -208,7 +220,6 @@ void wallet_encrypted_derive_private
 	HMAC_sha512_ctx hmac_ctx;
 	uint8_t idxBuf[4];
 	uint8_t z[64];
-	uint8_t zl8[32];
 	uint8_t hmac_out[64];
 
 	serialize_index32(idxBuf, index, mode);
@@ -227,11 +238,8 @@ void wallet_encrypted_derive_private
 	HMAC_sha512_update(&hmac_ctx, idxBuf, 4);
 	HMAC_sha512_final(&hmac_ctx, z);
 
-	/* get 8 * Zl */
-	multiply8(zl8, z, 32);
+	add_left(res_key, z, priv_key, mode);
 
-	/* Kl = 8*Zl + parent(K)l */
-	cardano_crypto_ed25519_scalar_add(zl8, priv_key, res_key);
 	/* Kr = Zr + parent(K)r */
 	add_256bits(res_key + 32, z+32, priv_key+32);
 
