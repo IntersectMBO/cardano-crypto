@@ -213,6 +213,19 @@ static void add_right(ed25519_secret_key res_key, uint8_t *z, ed25519_secret_key
 	add_256bits(res_key + 32, z+32, priv_key+32);
 }
 
+static void add_left_public(uint8_t *out, uint8_t *z, uint8_t *in, derivation_scheme_mode mode)
+{
+	uint8_t zl8[32];
+	ed25519_public_key pub_zl8;
+
+	memset(zl8, 0, 32);
+	multiply8(zl8, z, 32);
+
+	/* Kl = 8*Zl*B + Al */
+	cardano_crypto_ed25519_publickey(zl8, pub_zl8);
+	cardano_crypto_ed25519_point_add(pub_zl8, in, out);
+}
+
 void wallet_encrypted_derive_private
     (encrypted_key const *in,
      uint8_t const *pass, uint32_t const pass_len,
@@ -276,10 +289,8 @@ int wallet_encrypted_derive_public
      derivation_scheme_mode mode)
 {
 	HMAC_sha512_ctx hmac_ctx;
-	ed25519_public_key pub_zl8;
 	uint8_t idxBuf[4];
 	uint8_t z[64];
-	uint8_t zl8[32];
 	uint8_t hmac_out[64];
 
 	/* cannot derive hardened key using public bits */
@@ -296,11 +307,7 @@ int wallet_encrypted_derive_public
 	HMAC_sha512_final(&hmac_ctx, z);
 
 	/* get 8 * Zl */
-	multiply8(zl8, z, 32);
-
-	/* Kl = 8*Zl*B + Al */
-	cardano_crypto_ed25519_publickey(zl8, pub_zl8);
-	cardano_crypto_ed25519_point_add(pub_zl8, pub_in, pub_out);
+	add_left_public(pub_out, z, pub_in, mode);
 
 	/* calculate the new chain code */
 	HMAC_sha512_init(&hmac_ctx, cc_in, CHAIN_CODE_SIZE);
