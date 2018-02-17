@@ -208,6 +208,11 @@ static void add_left(ed25519_secret_key res_key, uint8_t *z, ed25519_secret_key 
 	cardano_crypto_ed25519_scalar_add(zl8, priv_key, res_key);
 }
 
+static void add_right(ed25519_secret_key res_key, uint8_t *z, ed25519_secret_key priv_key, derivation_scheme_mode mode)
+{
+	add_256bits(res_key + 32, z+32, priv_key+32);
+}
+
 void wallet_encrypted_derive_private
     (encrypted_key const *in,
      uint8_t const *pass, uint32_t const pass_len,
@@ -241,7 +246,7 @@ void wallet_encrypted_derive_private
 	add_left(res_key, z, priv_key, mode);
 
 	/* Kr = Zr + parent(K)r */
-	add_256bits(res_key + 32, z+32, priv_key+32);
+	add_right(res_key, z, priv_key, mode);
 
 	/* calculate the new chain code */
 	HMAC_sha512_init(&hmac_ctx, in->cc, CHAIN_CODE_SIZE);
