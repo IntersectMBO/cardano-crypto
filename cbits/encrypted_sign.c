@@ -147,6 +147,10 @@ DECL_HMAC(sha512,
           cryptonite_sha512_update,
           cryptonite_sha512_finalize);
 
+typedef enum {
+	DERIVATION_V1 = 1,
+} derivation_scheme_mode;
+
 static void multiply8(uint8_t *dst, uint8_t *src, int bytes)
 {
         int i;
@@ -184,7 +188,8 @@ void wallet_encrypted_derive_private
     (encrypted_key const *in,
      uint8_t const *pass, uint32_t const pass_len,
      uint32_t index,
-     encrypted_key *out)
+     encrypted_key *out,
+     derivation_scheme_mode mode)
 {
 	ed25519_secret_key priv_key;
 	ed25519_secret_key res_key;
@@ -246,7 +251,8 @@ int wallet_encrypted_derive_public
      uint8_t *cc_in,
      uint32_t index,
      uint8_t *pub_out,
-     uint8_t *cc_out)
+     uint8_t *cc_out,
+     derivation_scheme_mode mode)
 {
 	HMAC_sha512_ctx hmac_ctx;
 	ed25519_public_key pub_zl8;
