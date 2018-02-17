@@ -147,14 +147,18 @@ DECL_HMAC(sha512,
           cryptonite_sha512_update,
           cryptonite_sha512_finalize);
 
+typedef enum {
+	DERIVATION_V1 = 1,
+} derivation_scheme_mode;
+
 static void multiply8(uint8_t *dst, uint8_t *src, int bytes)
 {
-        int i;
-        uint8_t prev_acc = 0;
-        for (i = 0; i < bytes; i++) {
-                dst[i] = (src[i] << 3) + (prev_acc & 0x8);
-                prev_acc = src[i] >> 5;
-        }
+	int i;
+	uint8_t prev_acc = 0;
+	for (i = 0; i < bytes; i++) {
+		dst[i] = (src[i] << 3) + (prev_acc & 0x8);
+		prev_acc = src[i] >> 5;
+	}
 }
 
 static void add_256bits(uint8_t *dst, uint8_t *src1, uint8_t *src2)
@@ -180,25 +184,63 @@ static int index_is_hardened(uint32_t index)
 }
 
 
+static void serialize_index32(uint8_t *out, uint32_t index, derivation_scheme_mode mode)
+{
+	switch (mode) {
+	case DERIVATION_V1: /* BIG ENDIAN */
+		out[0] = index >> 24;
+		out[1] = index >> 16;
+		out[2] = index >> 8;
+		out[3] = index;
+		break;
+	}
+}
+
+static void add_left(ed25519_secret_key res_key, uint8_t *z, ed25519_secret_key priv_key, derivation_scheme_mode mode)
+{
+	uint8_t zl8[32];
+
+	memset(zl8, 0, 32);
+	/* get 8 * Zl */
+	multiply8(zl8, z, 32);
+
+	/* Kl = 8*Zl + parent(K)l */
+	cardano_crypto_ed25519_scalar_add(zl8, priv_key, res_key);
+}
+
+static void add_right(ed25519_secret_key res_key, uint8_t *z, ed25519_secret_key priv_key, derivation_scheme_mode mode)
+{
+	add_256bits(res_key + 32, z+32, priv_key+32);
+}
+
+static void add_left_public(uint8_t *out, uint8_t *z, uint8_t *in, derivation_scheme_mode mode)
+{
+	uint8_t zl8[32];
+	ed25519_public_key pub_zl8;
+
+	memset(zl8, 0, 32);
+	multiply8(zl8, z, 32);
+
+	/* Kl = 8*Zl*B + Al */
+	cardano_crypto_ed25519_publickey(zl8, pub_zl8);
+	cardano_crypto_ed25519_point_add(pub_zl8, in, out);
+}
+
 void wallet_encrypted_derive_private
     (encrypted_key const *in,
      uint8_t const *pass, uint32_t const pass_len,
      uint32_t index,
-     encrypted_key *out)
+     encrypted_key *out,
+     derivation_scheme_mode mode)
 {
 	ed25519_secret_key priv_key;
 	ed25519_secret_key res_key;
 	HMAC_sha512_ctx hmac_ctx;
 	uint8_t idxBuf[4];
 	uint8_t z[64];
-	uint8_t zl8[32];
 	uint8_t hmac_out[64];
 
-	/* little endian representation of index */
-	idxBuf[0] = index >> 24;
-	idxBuf[1] = index >> 16;
-	idxBuf[2] = index >> 8;
-	idxBuf[3] = index;
+	serialize_index32(idxBuf, index, mode);
 
 	unencrypt_start(pass, pass_len, in, priv_key);
 
@@ -214,13 +256,10 @@ void wallet_encrypted_derive_private
 	HMAC_sha512_update(&hmac_ctx, idxBuf, 4);
 	HMAC_sha512_final(&hmac_ctx, z);
 
-	/* get 8 * Zl */
-	multiply8(zl8, z, 32);
+	add_left(res_key, z, priv_key, mode);
 
-	/* Kl = 8*Zl + parent(K)l */
-	cardano_crypto_ed25519_scalar_add(zl8, priv_key, res_key);
 	/* Kr = Zr + parent(K)r */
-	add_256bits(res_key + 32, z+32, priv_key+32);
+	add_right(res_key, z, priv_key, mode);
 
 	/* calculate the new chain code */
 	HMAC_sha512_init(&hmac_ctx, in->cc, CHAIN_CODE_SIZE);
@@ -246,24 +285,19 @@ int wallet_encrypted_derive_public
      uint8_t *cc_in,
      uint32_t index,
      uint8_t *pub_out,
-     uint8_t *cc_out)
+     uint8_t *cc_out,
+     derivation_scheme_mode mode)
 {
 	HMAC_sha512_ctx hmac_ctx;
-	ed25519_public_key pub_zl8;
 	uint8_t idxBuf[4];
 	uint8_t z[64];
-	uint8_t zl8[32];
 	uint8_t hmac_out[64];
 
 	/* cannot derive hardened key using public bits */
 	if (index_is_hardened(index))
 		return 1;
 
-	/* little endian representation of index */
-	idxBuf[0] = index >> 24;
-	idxBuf[1] = index >> 16;
-	idxBuf[2] = index >> 8;
-	idxBuf[3] = index;
+	serialize_index32(idxBuf, index, mode);
 
 	/* calculate Z */
 	HMAC_sha512_init(&hmac_ctx, cc_in, CHAIN_CODE_SIZE);
@@ -273,11 +307,7 @@ int wallet_encrypted_derive_public
 	HMAC_sha512_final(&hmac_ctx, z);
 
 	/* get 8 * Zl */
-	multiply8(zl8, z, 32);
-
-	/* Kl = 8*Zl*B + Al */
-	cardano_crypto_ed25519_publickey(zl8, pub_zl8);
-	cardano_crypto_ed25519_point_add(pub_zl8, pub_in, pub_out);
+	add_left_public(pub_out, z, pub_in, mode);
 
 	/* calculate the new chain code */
 	HMAC_sha512_init(&hmac_ctx, cc_in, CHAIN_CODE_SIZE);

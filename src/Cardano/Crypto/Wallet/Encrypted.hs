@@ -127,17 +127,17 @@ encryptedDerivePrivate :: (ByteArrayAccess passphrase)
                        -> passphrase
                        -> Word32
                        -> EncryptedKey
-encryptedDerivePrivate _ (EncryptedKey parent) pass childIndex =
+encryptedDerivePrivate dscheme (EncryptedKey parent) pass childIndex =
     EncryptedKey $ B.allocAndFreeze totalKeySize $ \ekey ->
         withByteArray pass   $ \ppass   ->
         withByteArray parent $ \pparent ->
-            wallet_encrypted_derive_private pparent ppass (fromIntegral $ B.length pass) childIndex ekey
+            wallet_encrypted_derive_private pparent ppass (fromIntegral $ B.length pass) childIndex ekey (dschemeToC dscheme)
 
 encryptedDerivePublic :: DerivationScheme
                       -> (PublicKey, ChainCode)
                       -> Word32
                       -> (PublicKey, ChainCode)
-encryptedDerivePublic _ (pub, cc) childIndex
+encryptedDerivePublic dscheme (pub, cc) childIndex
     | childIndex >= 0x80000000 = error "cannot derive hardened in derive public"
     | otherwise                = unsafePerformIO $ do
         (newCC, newPub) <-
@@ -145,7 +145,7 @@ encryptedDerivePublic _ (pub, cc) childIndex
                 B.alloc ccSize           $ \outCc  ->
                 withByteArray pub        $ \ppub   ->
                 withByteArray cc         $ \pcc    -> do
-                    r <- wallet_encrypted_derive_public ppub pcc childIndex outPub outCc
+                    r <- wallet_encrypted_derive_public ppub pcc childIndex outPub outCc (dschemeToC dscheme)
                     if r /= 0 then error "encrypted derive public assumption about index failed" else return ()
         return (newPub, newCC)
 
@@ -159,6 +159,12 @@ encryptedChainCode (EncryptedKey ekey) = sub ccOffset ccSize ekey
 
 sub :: B.ByteArray c => Int -> Int -> c -> c
 sub ofs sz = B.take sz . B.drop ofs
+
+-- map to the C enum : derivation_scheme_mode
+type CDerivationScheme = CInt
+
+dschemeToC :: DerivationScheme -> CDerivationScheme
+dschemeToC DerivationScheme1 = 1
 
 -- return 0 if success, otherwise 1 if structure of seed not proper
 foreign import ccall "wallet_encrypted_from_secret"
@@ -180,6 +186,7 @@ foreign import ccall "wallet_encrypted_derive_private"
                                     -> Ptr PassPhrase -> Word32
                                     -> Word32 -- index
                                     -> Ptr EncryptedKey
+                                    -> CDerivationScheme
                                     -> IO ()
 
 foreign import ccall "wallet_encrypted_derive_public"
@@ -188,6 +195,7 @@ foreign import ccall "wallet_encrypted_derive_public"
                                    -> Word32
                                    -> Ptr PublicKey
                                    -> Ptr ChainCode
+                                   -> CDerivationScheme
                                    -> IO CInt
 
 foreign import ccall "wallet_encrypted_change_pass"
