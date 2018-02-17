@@ -153,12 +153,12 @@ typedef enum {
 
 static void multiply8(uint8_t *dst, uint8_t *src, int bytes)
 {
-        int i;
-        uint8_t prev_acc = 0;
-        for (i = 0; i < bytes; i++) {
-                dst[i] = (src[i] << 3) + (prev_acc & 0x8);
-                prev_acc = src[i] >> 5;
-        }
+	int i;
+	uint8_t prev_acc = 0;
+	for (i = 0; i < bytes; i++) {
+		dst[i] = (src[i] << 3) + (prev_acc & 0x8);
+		prev_acc = src[i] >> 5;
+	}
 }
 
 static void add_256bits(uint8_t *dst, uint8_t *src1, uint8_t *src2)
