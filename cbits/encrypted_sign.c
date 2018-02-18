@@ -151,7 +151,7 @@ typedef enum {
 	DERIVATION_V1 = 1,
 } derivation_scheme_mode;
 
-static void multiply8(uint8_t *dst, uint8_t *src, int bytes)
+static void multiply8_v1(uint8_t *dst, uint8_t *src, int bytes)
 {
 	int i;
 	uint8_t prev_acc = 0;
@@ -161,15 +161,14 @@ static void multiply8(uint8_t *dst, uint8_t *src, int bytes)
 	}
 }
 
-static void add_256bits(uint8_t *dst, uint8_t *src1, uint8_t *src2)
+static void add_256bits_v1(uint8_t *dst, uint8_t *src1, uint8_t *src2)
 {
-	int i; uint8_t carry = 0;
+	int i;
 	for (i = 0; i < 32; i++) {
 		uint8_t a = src1[i];
 		uint8_t b = src2[i];
 		uint16_t r = a + b;
 		dst[i] = r & 0xff;
-		carry = (r >= 0x100) ? 1 : 0;
 	}
 }
 
@@ -201,16 +200,24 @@ static void add_left(ed25519_secret_key res_key, uint8_t *z, ed25519_secret_key 
 	uint8_t zl8[32];
 
 	memset(zl8, 0, 32);
-	/* get 8 * Zl */
-	multiply8(zl8, z, 32);
+	switch (mode) {
+	case DERIVATION_V1:
+		/* get 8 * Zl */
+		multiply8_v1(zl8, z, 32);
 
-	/* Kl = 8*Zl + parent(K)l */
-	cardano_crypto_ed25519_scalar_add(zl8, priv_key, res_key);
+		/* Kl = 8*Zl + parent(K)l */
+		cardano_crypto_ed25519_scalar_add(zl8, priv_key, res_key);
+		break;
+	}
 }
 
 static void add_right(ed25519_secret_key res_key, uint8_t *z, ed25519_secret_key priv_key, derivation_scheme_mode mode)
 {
-	add_256bits(res_key + 32, z+32, priv_key+32);
+	switch (mode) {
+	case DERIVATION_V1:
+		add_256bits_v1(res_key + 32, z+32, priv_key+32);
+		break;
+	}
 }
 
 static void add_left_public(uint8_t *out, uint8_t *z, uint8_t *in, derivation_scheme_mode mode)
@@ -219,7 +226,11 @@ static void add_left_public(uint8_t *out, uint8_t *z, uint8_t *in, derivation_sc
 	ed25519_public_key pub_zl8;
 
 	memset(zl8, 0, 32);
-	multiply8(zl8, z, 32);
+	switch (mode) {
+	case DERIVATION_V1:
+		multiply8_v1(zl8, z, 32);
+		break;
+	}
 
 	/* Kl = 8*Zl*B + Al */
 	cardano_crypto_ed25519_publickey(zl8, pub_zl8);
