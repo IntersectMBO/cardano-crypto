@@ -35,6 +35,8 @@ import           Data.Proxy
 import qualified Crypto.Encoding.BIP39 as BIP39
 import qualified Cardano.Crypto.Encoding.Seed as PW
 
+import qualified Test.Cardano as Cardano
+
 import           TestVectors.PaperWallet
 
 noPassphrase :: B.ByteString
@@ -327,6 +329,7 @@ main = defaultMain $ Group "cardano-crypto"
     , BIP39.tests
     , testCardanoCryptoEncoding
     , testVectorPaperWallet
+    , Cardano.tests
     ]
     {-
     , Group "edwards25519-ed25519variant" testVariant

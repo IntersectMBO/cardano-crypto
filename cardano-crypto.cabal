@@ -59,6 +59,10 @@ test-suite cardano-crypto-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   other-modules:       TestVectors.PaperWallet
+                       Test.Cardano
+                       Test.Cardano.Crypto
+                       Test.Cardano.Crypto.Praos
+                       Test.Cardano.Crypto.Praos.VRF
   build-depends:       base
                      , bytestring
                      , memory
