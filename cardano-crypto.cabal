@@ -24,6 +24,7 @@ library
                        Cardano.Crypto.Wallet.Types
                        Cardano.Crypto.Wallet.Pure
                        Cardano.Crypto.Encoding.Seed
+                       Cardano.Crypto.Praos.VRF
                        Crypto.Math.Edwards25519
                        Crypto.Math.Bits
                        Crypto.Math.Bytes
