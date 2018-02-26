@@ -30,6 +30,8 @@ library
                        Crypto.Math.NatMath
                        Crypto.ECC.Ed25519Donna
                        Crypto.ECC.Ed25519BIP32
+                       Crypto.ECC.P256
+                       Crypto.DLEQ
                        Crypto.Encoding.BIP39
                        Crypto.Encoding.BIP39.English
   build-depends:       base >= 4.7 && < 5
@@ -42,6 +44,7 @@ library
                      , cryptonite >= 0.22
                      , cryptonite-openssl >= 0.5
                      , hashable
+                     , integer-gmp
   default-language:    Haskell2010
   C-sources:           cbits/ed25519/ed25519.c
                        cbits/encrypted_sign.c
