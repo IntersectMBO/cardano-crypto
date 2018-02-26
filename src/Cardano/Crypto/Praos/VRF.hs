@@ -22,6 +22,9 @@ module Cardano.Crypto.Praos.VRF
       Proof
     , generate
     , verify
+
+    , -- ** for testing
+      generate'
     ) where
 
 import Foundation
@@ -115,9 +118,22 @@ generate :: (ByteArrayAccess ba, MonadRandom randomly)
          -> SecretKey
          -> randomly (Output, Proof)
 generate m k = do
-    r <- toScalar <$> generateKey
-    let proof = DLEQ.generate r (toScalar k) (DLEQ P256.curveGenerator h1 g2 h2)
-    pure (y, Proof u proof)
+    r <- generateKey
+    pure $ generate' r m k
+
+-- | Generate a Deterministicaly _random_ 'Output' and an associated 'Proof'
+--
+-- At any time, with the associated 'PublicKey' one is able to 'verify' the
+-- 'Output' of 'generate' with the returned 'Output' and 'Proof'.
+--
+generate' :: ByteArrayAccess ba
+          => SecretKey
+          -> ba
+          -> SecretKey
+          -> (Output, Proof)
+generate' r m k =
+    let proof = DLEQ.generate (toScalar r) (toScalar k) (DLEQ P256.curveGenerator h1 g2 h2)
+     in (y, Proof u proof)
   where
     u = hash' m .^ k
     y = hash m u
