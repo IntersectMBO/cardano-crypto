@@ -1,4 +1,5 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Crypto.DLEQ
     ( DLEQ(..)
     , Proof(..)
@@ -12,11 +13,15 @@ module Crypto.DLEQ
     ) where
 
 import           Foundation
+import           Foundation.Parser (elements)
 import           Crypto.ECC.P256
-import           Data.ByteArray (Bytes)
+import           Data.ByteArray (Bytes,ByteArrayAccess,ByteArray)
 
 import Data.List (zipWith)
 import Data.Foldable (concatMap)
+
+import qualified Inspector.Parser as I
+import qualified Inspector.Display as I
 
 data DLEQ = DLEQ
     { dleq_g1 :: !Point -- ^ g1 parameter
@@ -26,13 +31,25 @@ data DLEQ = DLEQ
     } deriving (Show,Eq,Typeable)
 
 newtype Challenge = Challenge Bytes
-    deriving (Show,Eq,Typeable)
+    deriving (Show,Eq,Ord,Typeable,Monoid,ByteArrayAccess, ByteArray)
+instance I.HasParser Challenge where
+    getParser = Challenge <$> I.getParser
+instance I.Display Challenge where
+    display (Challenge c) = I.display c
 
 -- | The generated proof
 data Proof = Proof
     { proofC :: !Challenge
     , proofZ :: !Scalar
     } deriving (Show,Eq,Typeable)
+instance I.HasParser Proof where
+    getParser = do
+        elements "challenge: "
+        c <- I.getParser
+        elements ", z: "
+        Proof c <$> I.getParser
+instance I.Display Proof where
+    display (Proof c z) = "challenge: " <> I.display c <> ", z: " <> I.display z
 
 newtype ParallelProof = ParallelProof { parallelProofZ :: Scalar }
     deriving (Show,Eq,Typeable)

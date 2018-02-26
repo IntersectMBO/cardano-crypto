@@ -27,15 +27,32 @@ import Inspector
 import Inspector.Display
 import Inspector.Parser
 
+import Data.ByteArray (Bytes, convert)
+
 import           Cardano.Crypto.Wallet
 import           Cardano.Crypto.Encoding.Seed
 import           Crypto.Encoding.BIP39
 import qualified Crypto.Encoding.BIP39.English as English
+import qualified Cardano.Crypto.Praos.VRF as VRF
 
 main :: IO ()
 main = defaultMain $ do
     goldenPaperwallet
     goldenHDWallet
+    goldenVRF
+
+type GoldenVRF
+    = "cardano" :> "crypto" :> "VRF"
+      :> Payload "random"  VRF.SecretKey
+      :> Payload "message" String
+      :> Payload "secret"  VRF.SecretKey
+      :> ( Payload "output" Bytes
+         , Payload "proof" VRF.Proof
+         )
+
+goldenVRF :: GoldenT ()
+goldenVRF = golden (Proxy :: Proxy GoldenVRF) $ \r msg sec ->
+    first convert (VRF.generate' r msg sec)
 
 -- -------------------------------------------------------------------------- --
 
