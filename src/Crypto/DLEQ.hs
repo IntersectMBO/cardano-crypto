@@ -1,5 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 module Crypto.DLEQ
     ( DLEQ(..)
     , Proof(..)
@@ -35,6 +36,7 @@ newtype Challenge = Challenge Bytes
 instance I.HasParser Challenge where
     getParser = Challenge <$> I.getParser
 instance I.Display Challenge where
+    encoding _ = "hex"
     display (Challenge c) = I.display c
 
 -- | The generated proof
@@ -49,6 +51,7 @@ instance I.HasParser Proof where
         elements ", z: "
         Proof c <$> I.getParser
 instance I.Display Proof where
+    encoding _ = "challenge: " <> I.encoding (Proxy @Challenge) <> ", z: " <> I.encoding (Proxy @Scalar)
     display (Proof c z) = "challenge: " <> I.display c <> ", z: " <> I.display z
 
 newtype ParallelProof = ParallelProof { parallelProofZ :: Scalar }

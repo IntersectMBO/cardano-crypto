@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE TypeApplications #-}
 module Crypto.ECC.P256
     ( Point(..)
     , Scalar(..)
@@ -127,6 +128,7 @@ instance Arbitrary Scalar where
 instance I.HasParser Scalar where
     getParser = Scalar <$> I.getParser
 instance I.Display Scalar where
+    encoding _ = I.encoding (Proxy @Integer)
     display = I.display . unScalar
 
 scalarToBytes :: ByteArray b => Scalar -> b

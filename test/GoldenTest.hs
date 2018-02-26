@@ -122,6 +122,7 @@ newtype ChainCodePath = Root [Word32]
 instance Arbitrary ChainCodePath where
     arbitrary = Root <$> arbitrary
 instance Display ChainCodePath where
+    encoding _ = "m[([0-9]+|[0-9]+')]*"
     display (Root l) = "\"" <> intercalate "/" ((:) "m" $ f <$> l) <> "\""
       where
         f :: Word32 -> String
@@ -157,6 +158,7 @@ instance (KnownNat n, NatWithinBound Int n) => Arbitrary (Mnemonic 'English n) w
         pure $ Mnemonic $ LN.map (dictionaryWordToIndex englishDict) r
 
 instance Display (Mnemonic 'English n) where
+    encoding _ = "a list of english words as defined in BIP39"
     display (Mnemonic l) = "\"" <> intercalate " " (LN.unListN $ LN.map (dictionaryIndexToWord englishDict) l) <> "\""
 instance (KnownNat n, NatWithinBound Int n) => HasParser (Mnemonic 'English n) where
     getParser = do

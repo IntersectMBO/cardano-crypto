@@ -21,7 +21,7 @@ build: ghc-8.4-testvectors allowed-failure testvectors gitdep=inspector
 package: '.'
 
 # deps:
-gitdep: inspector https://github.com/primetype/inspector c39d899e29acb8e37d58618ae3bf80aabf13d23c
+gitdep: inspector https://github.com/primetype/inspector 674c5d3a4733088f14164b0924824b7433e06428
 
 # extra builds
 hlint: allowed-failure

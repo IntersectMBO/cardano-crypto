@@ -66,6 +66,7 @@ instance I.HasParser SecretKey where
         c :: Bytes -> SecretKey
         c = secretKeyFromBytes
 instance I.Display SecretKey where
+    encoding _ = "hex"
     display = I.display . (secretKeyToBytes :: SecretKey -> Bytes)
 
 newtype PublicKey = PublicKey { toPoint :: Point }
@@ -77,6 +78,7 @@ instance I.HasParser PublicKey where
         c = either (error . fromList) id . publicKeyFromBytes
 instance I.Display PublicKey where
     display = I.display . (publicKeyToBytes :: PublicKey -> Bytes)
+    encoding _ = "hex"
 
 -- | generate a new secret key
 generateKey :: MonadRandom randomly => randomly SecretKey
@@ -133,6 +135,7 @@ instance I.HasParser Proof where
         elements ", "
         Proof u <$> I.getParser
 instance I.Display Proof where
+    encoding _ = "u: `Public Key`, " <> I.encoding (Proxy :: Proxy DLEQ.Proof)
     display (Proof u dleq) = "u: " <> I.display u <> ", " <> I.display dleq
 
 -- | Generate a Deterministicaly _random_ 'Output' and an associated 'Proof'

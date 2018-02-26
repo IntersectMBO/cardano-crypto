@@ -86,6 +86,7 @@ instance Arbitrary ScrambleIV where
         pure $ throwCryptoError $ mkScrambleIV $ B.pack $ ListN.unListN l
 instance Display ScrambleIV where
     display = displayByteArrayAccess
+    encoding _ = "hex"
 instance HasParser ScrambleIV where
     getParser = do
         bs <- strParser >>= parseByteArray
