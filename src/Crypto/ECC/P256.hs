@@ -41,6 +41,7 @@ module Crypto.ECC.P256
 import Prelude (Show(..))
 
 import Foundation hiding (show)
+import Foundation.Check (Arbitrary(..))
 import Basement.NormalForm
 
 import qualified Data.ByteArray as B
@@ -65,9 +66,15 @@ data KeyPair = KeyPair
     , toPublicKey  :: PublicKey
     }
     deriving (Show,Eq,Typeable)
+instance Arbitrary KeyPair where
+    arbitrary = do
+        drg <- drgNewTest <$> arbitrary
+        pure $ fst $ withDRG drg keyPairGenerate
 
 newtype DhSecret = DhSecret ScrubbedBytes
     deriving (Show,Eq,Typeable)
+instance Arbitrary DhSecret where
+    arbitrary = pointToDhSecret <$> arbitrary
 
 keyFromBytes :: ByteArrayAccess ba => ba -> Scalar
 keyFromBytes = keyFromNum . os2ip'
@@ -77,10 +84,14 @@ keyFromBytes = keyFromNum . os2ip'
 -- | Private Key
 newtype PrivateKey = PrivateKey Scalar
     deriving (Show,Eq,Typeable,NormalForm)
+instance Arbitrary PrivateKey where
+    arbitrary = toPrivateKey <$> arbitrary
 
 -- | Public Key
 newtype PublicKey = PublicKey Point
     deriving (Show,Eq,Typeable,NormalForm)
+instance Arbitrary PublicKey where
+    arbitrary = toPublicKey <$> arbitrary
 
 #ifdef OPENSSL
 
@@ -91,6 +102,8 @@ newtype Point = Point { unPoint :: SSL.EcPoint }
     deriving (Typeable)
 instance NormalForm Point where
     toNormalForm (Point !_) = ()
+instance Arbitrary Point where
+    arbitrary = pointFromSecret <$> arbitrary
 
 pointFromBytes :: ByteArrayAccess ba => ba -> Either LString Point
 pointFromBytes b = Point <$> SSL.ecPointFromOct p256 b
@@ -104,6 +117,10 @@ instance Eq Point where
 
 newtype Scalar = Scalar { unScalar :: Integer }
     deriving (Show,Eq,Typeable,NormalForm)
+instance Arbitrary Scalar where
+    arbitrary = do
+        drg <- drgNewTest <$> arbitrary
+        pure $ fst $ withDRG drg keyGenerate
 
 scalarToBytes :: ByteArray b => Scalar -> b
 scalarToBytes = i2ospOf_ 32 . unScalar
