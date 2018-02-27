@@ -158,7 +158,7 @@ testHdDerivation =
          in verify cPub dummyMsg (sign noPassphrase cPrv dummyMsg)
 -}
 
-testEncrypted dscheme =
+testEncrypted =
     [ Property "pub(sec) = pub(encrypted(no-pass, sec))" (pubEq noPassphrase)
     , Property "pub(sec) = pub(encrypted(dummy, sec))" (pubEq dummyPassphrase)
     , Property "pub(sec) = pub(encrypted(no-pass, sec))" (pubEqValid noPassphrase)
@@ -196,13 +196,13 @@ testEncrypted dscheme =
                     (Signature sig2) = encryptedSign ekey pass msg
                  in B.convert sig1 === sig2
             _ -> error "valid seed got a invalid result"
-    deriveNormalPublicKey pass (ValidSeed (Seed s)) nRaw =
+    deriveNormalPublicKey pass dscheme (ValidSeed (Seed s)) nRaw =
         let ekey = throwCryptoError $ encryptedCreate s pass dummyChainCode
             ckey = encryptedDerivePrivate dscheme ekey pass n
             (expectedPubkey, expectedChainCode) = encryptedDerivePublic dscheme (encryptedPublic ekey, encryptedChainCode ekey) n
          in encryptedPublic ckey === expectedPubkey
       where n = nRaw `mod` 0x80000000
-    deriveNormalChainCode pass (ValidSeed (Seed s)) nRaw =
+    deriveNormalChainCode pass dscheme (ValidSeed (Seed s)) nRaw =
         let ekey = throwCryptoError $ encryptedCreate s pass dummyChainCode
             ckey = encryptedDerivePrivate dscheme ekey pass n
             (expectedPubkey, expectedChainCode) = encryptedDerivePublic dscheme (encryptedPublic ekey, encryptedChainCode ekey) n
@@ -268,8 +268,8 @@ pointToPublic = throwCryptoError . EdVariant.publicKey . Edwards25519.unPointCom
 scalarToSecret :: Edwards25519.Scalar -> EdVariant.SecretKey
 scalarToSecret = throwCryptoError . EdVariant.secretKey . Edwards25519.unScalar
 
-testChangePassphrase :: DerivationScheme -> [Test]
-testChangePassphrase dscheme =
+testChangePassphrase :: [Test]
+testChangePassphrase =
     [ Property "change-passphrase-publickey-stable" pubEq
     , Property "normal-derive-key-different-passphrase-stable" deriveNormalEq
     , Property "hardened-derive-key-different-passphrase-stable" deriveHardenedEq
@@ -280,14 +280,14 @@ testChangePassphrase dscheme =
             xprv2 = encryptedChangePass p1 p2 xprv1
          in encryptedPublic xprv1 === encryptedPublic xprv2
 
-    deriveNormalEq (ValidSeed (Seed s)) (Passphrase p1) (Passphrase p2) n =
+    deriveNormalEq dscheme (ValidSeed (Seed s)) (Passphrase p1) (Passphrase p2) n =
         let xprv1 = throwCryptoError $ encryptedCreate s p1 dummyChainCode
             xprv2 = encryptedChangePass p1 p2 xprv1
             cPrv1 = encryptedDerivePrivate dscheme xprv1 p1 (toNormal n)
             cPrv2 = encryptedDerivePrivate dscheme xprv2 p2 (toNormal n)
          in encryptedPublic cPrv1 === encryptedPublic cPrv2
 
-    deriveHardenedEq (ValidSeed (Seed s)) (Passphrase p1) (Passphrase p2) n =
+    deriveHardenedEq dscheme (ValidSeed (Seed s)) (Passphrase p1) (Passphrase p2) n =
         let xprv1 = throwCryptoError $ encryptedCreate s p1 dummyChainCode
             xprv2 = encryptedChangePass p1 p2 xprv1
             cPrv1 = encryptedDerivePrivate dscheme xprv1 p1 (toHardened n)
@@ -373,8 +373,8 @@ testEdBIP32 =
         let (s1,s2)  = B.splitAt 32 k
          in (packN s1, packN s2, EdBIP32.ChainCode $ packBytesN cc)
 
-    softIdx = [1..32]
-    hardIdx = [0x80000000..0x80000010] ++ [0xf00f0001..0xf00f0020] ++ [0x90000003..0x90000009]
+    softIdx = [1..9]
+    hardIdx = [0x80000000..0x80000003] ++ [0xf00f0001..0xf00f0004] ++ [0x90000003..0x90000005]
 
     xprvEqKey :: XPrv -> EdBIP32.Key -> Bool
     xprvEqKey xPrv (k1,k2,EdBIP32.ChainCode cc) =
@@ -440,10 +440,8 @@ main = defaultMain $ Group "cardano-crypto"
     [ Group "edwards25519-arithmetic" testEdwards25519
     , Group "edwards25519-BIP32" testEdBIP32
     , Group "point-addition" testPointAdd
-    , Group "encrypted" (testEncrypted DerivationScheme1)
-    , Group "change-pass" (testChangePassphrase DerivationScheme1)
-    , Group "encrypted" (testEncrypted DerivationScheme2)
-    , Group "change-pass" (testChangePassphrase DerivationScheme2)
+    , Group "encrypted" testEncrypted
+    , Group "change-pass" testChangePassphrase
     , BIP39.tests
     , testCardanoCryptoEncoding
     , testVectorPaperWallet
