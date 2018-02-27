@@ -54,9 +54,6 @@ import           Crypto.Number.Serialize
 import           Crypto.Number.ModArithmetic (expFast)
 import           Crypto.Random
 
-import qualified Inspector.Parser as I
-import qualified Inspector.Display as I
-
 #ifdef OPENSSL
 import qualified Crypto.OpenSSL.ECC as SSL
 import GHC.Integer.GMP.Internals (recipModInteger)
@@ -125,11 +122,6 @@ instance Arbitrary Scalar where
     arbitrary = do
         drg <- drgNewTest <$> arbitrary
         pure $ fst $ withDRG drg keyGenerate
-instance I.HasParser Scalar where
-    getParser = Scalar <$> I.getParser
-instance I.Display Scalar where
-    encoding _ = I.encoding (Proxy @Integer)
-    display = I.display . unScalar
 
 scalarToBytes :: ByteArray b => Scalar -> b
 scalarToBytes = i2ospOf_ 32 . unScalar

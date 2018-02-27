@@ -20,7 +20,7 @@ module Cardano.Crypto.Praos.VRF
     , publicKeyFromBytes
 
     , -- * Proof
-      Proof
+      Proof(..)
     , generate
     , verify
 
@@ -31,7 +31,6 @@ module Cardano.Crypto.Praos.VRF
 import Foundation
 import Basement.NormalForm
 import Foundation.Check (Arbitrary(..))
-import Foundation.Parser (elements)
 
 import Data.ByteArray (ByteArrayAccess, ByteArray, Bytes)
 
@@ -45,9 +44,6 @@ import qualified Crypto.Hash as Hash
 import           Crypto.MAC.HMAC (HMAC)
 import qualified Crypto.MAC.HMAC as HMAC
 
-import qualified Inspector.Parser as I
-import qualified Inspector.Display as I
-
 data KeyPair = KeyPair
     { toPublicKey :: !PublicKey
     , toSecretKey :: !SecretKey
@@ -60,25 +56,9 @@ instance NormalForm KeyPair where
 
 newtype SecretKey = SecretKey { toScalar :: Scalar }
   deriving (Eq, Show, Typeable, NormalForm, Arbitrary)
-instance I.HasParser SecretKey where
-    getParser = c <$> I.getParser
-      where
-        c :: Bytes -> SecretKey
-        c = secretKeyFromBytes
-instance I.Display SecretKey where
-    encoding _ = "hex"
-    display = I.display . (secretKeyToBytes :: SecretKey -> Bytes)
 
 newtype PublicKey = PublicKey { toPoint :: Point }
   deriving (Eq, Show, Typeable, NormalForm, Arbitrary)
-instance I.HasParser PublicKey where
-    getParser = c <$> I.getParser
-      where
-        c :: Bytes -> PublicKey
-        c = either (error . fromList) id . publicKeyFromBytes
-instance I.Display PublicKey where
-    display = I.display . (publicKeyToBytes :: PublicKey -> Bytes)
-    encoding _ = "hex"
 
 -- | generate a new secret key
 generateKey :: MonadRandom randomly => randomly SecretKey
@@ -128,15 +108,6 @@ hash message key = HMAC.hmac message k
 
 data Proof = Proof PublicKey DLEQ.Proof
   deriving (Eq, Show, Typeable)
-instance I.HasParser Proof where
-    getParser = do
-        elements "u: "
-        u <- I.getParser
-        elements ", "
-        Proof u <$> I.getParser
-instance I.Display Proof where
-    encoding _ = "u: `Public Key`, " <> I.encoding (Proxy :: Proxy DLEQ.Proof)
-    display (Proof u dleq) = "u: " <> I.display u <> ", " <> I.display dleq
 
 -- | Generate a Deterministicaly _random_ 'Output' and an associated 'Proof'
 --
