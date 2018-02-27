@@ -49,6 +49,7 @@ module Cardano.Crypto.Wallet
     , verify
     ) where
 
+import           Basement.Compat.Typeable
 import           Control.DeepSeq                 (NFData)
 import           Control.Arrow                   (second)
 import           Crypto.Error                    (throwCryptoError, CryptoFailable(..), CryptoError(..))
@@ -70,14 +71,15 @@ import           Cardano.Crypto.Wallet.Types
 import           GHC.Stack
 
 newtype XPrv = XPrv EncryptedKey
-    deriving (NFData, ByteArrayAccess)
+    deriving (NFData, Typeable, ByteArrayAccess)
 
 data XPub = XPub
     { xpubPublicKey :: !ByteString
     , xpubChaincode :: !ChainCode
-    } deriving (Generic)
+    } deriving (Eq, Show, Ord, Typeable, Generic)
 
 instance NFData XPub
+instance Hashable XPub
 
 newtype XSignature = XSignature
     { unXSignature :: ByteString
@@ -176,6 +178,6 @@ sign passphrase (XPrv ekey) ba =
 
 verify :: ByteArrayAccess msg => XPub -> msg -> XSignature -> Bool
 verify (XPub point _) ba (XSignature signature) =
-    let pub = throwCryptoError $ Ed25519.publicKey $ point
-        sig = throwCryptoError $ Ed25519.signature $ signature
+    let pub = throwCryptoError $ Ed25519.publicKey point
+        sig = throwCryptoError $ Ed25519.signature signature
      in Ed25519.verify pub ba sig
