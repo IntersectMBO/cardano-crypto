@@ -49,6 +49,7 @@ module Cardano.Crypto.Wallet
     , verify
     ) where
 
+import           Basement.Compat.Typeable
 import           Control.DeepSeq                 (NFData)
 import           Control.Arrow                   (second)
 import           Crypto.Error                    (throwCryptoError, CryptoFailable(..), CryptoError(..))
@@ -70,12 +71,12 @@ import           Cardano.Crypto.Wallet.Types
 import           GHC.Stack
 
 newtype XPrv = XPrv EncryptedKey
-    deriving (NFData, ByteArrayAccess)
+    deriving (NFData, Typeable, ByteArrayAccess)
 
 data XPub = XPub
     { xpubPublicKey :: !ByteString
     , xpubChaincode :: !ChainCode
-    } deriving (Generic)
+    } deriving (Eq, Show, Ord, Typeable, Generic)
 
 instance NFData XPub
 
