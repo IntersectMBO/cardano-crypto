@@ -13,6 +13,11 @@ build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
 
+flag golden-tests
+  description:       compile the golden test binary allowing to generate pretty markdown output
+  default:           False
+  manual:            True
+
 library
   hs-source-dirs:      src
   exposed-modules:     Cardano.Crypto.Wallet
@@ -89,12 +94,16 @@ executable golden-tests
   hs-source-dirs:      test
   main-is:             GoldenTest.hs
   other-modules:       Test.Orphans
+  if flag(golden-tests)
+    build-depends:     inspector
+    buildable:         True
+  else
+    buildable:         False
   build-depends:       base
                      , basement
                      , foundation
                      , memory
                      , cryptonite
-                     , inspector
                      , cardano-crypto
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-extensions:  NoImplicitPrelude
