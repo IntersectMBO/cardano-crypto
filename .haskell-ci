@@ -14,7 +14,7 @@ build: ghc-8.0 gitdep=inspector
 build: ghc-8.0-testvectors testvectors gitdep=inspector
 build: ghc-8.2 gitdep=inspector
 build: ghc-8.2-testvectors testvectors gitdep=inspector
-build: ghc-8.4 gitdep=inspector extradep=basement-0.0.7 extradep=cryptonite-0.25 extradep=cryptonite-openssl-0.6 extradep=foundation-0.0.20 extradep=hashable-1.2.6.1 extradep=memory-0.14.15
+build: ghc-8.4 gitdep=inspector extradep=basement-0.0.7 extradep=cryptonite-0.25 extradep=cryptonite-openssl-0.6 extradep=foundation-0.0.20 extradep=hashable-1.2.6.1 extradep=memory-0.14.15 allow-newer
 build: ghc-8.4-testvectors allowed-failure testvectors gitdep=inspector
 
 # packages
