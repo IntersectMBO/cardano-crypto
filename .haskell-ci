@@ -3,8 +3,8 @@ compiler: ghc-8.0 lts-9.21
 compiler: ghc-8.0-testvectors lts-9.21
 compiler: ghc-8.2 lts-10.4
 compiler: ghc-8.2-testvectors lts-10.4
-compiler: ghc-8.4 ghc-8.4-alpha2
-compiler: ghc-8.4-testvectors ghc-8.4-alpha2
+compiler: ghc-8.4 ghc-8.4-rc1
+compiler: ghc-8.4-testvectors ghc-8.4-rc1
 
 # options
 option: testvectors flag=cardano-crypto:test-vectors
@@ -14,7 +14,7 @@ build: ghc-8.0 gitdep=inspector
 build: ghc-8.0-testvectors testvectors gitdep=inspector
 build: ghc-8.2 gitdep=inspector
 build: ghc-8.2-testvectors testvectors gitdep=inspector
-build: ghc-8.4 allowed-failure gitdep=inspector
+build: ghc-8.4 gitdep=inspector extradep=basement-0.0.7 extradep=cryptonite-0.25 extradep=cryptonite-openssl-0.6 extradep=foundation-0.0.20 extradep=hashable-1.2.6.1 extradep=memory-0.14.15 allow-newer
 build: ghc-8.4-testvectors allowed-failure testvectors gitdep=inspector
 
 # packages

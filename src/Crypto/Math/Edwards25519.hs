@@ -241,19 +241,19 @@ modp_inv x = expFast x (p-2) p
 
 -- | Base field 2^255-19 => 25519
 p :: Integer
-!p = 2^(255 ::Int) - 19
+p = 2^(255 ::Int) - 19
 
 -- | Curve constant d
 curveD :: Integer
-!curveD = (-121665 * modp_inv 121666) `mod` p
+curveD = (-121665 * modp_inv 121666) `mod` p
 
 -- | Group order
 q :: Integer
-!q = 2^(252 ::Int) + 27742317777372353535851937790883648493
+q = 2^(252 ::Int) + 27742317777372353535851937790883648493
 
 -- | Base Point in extended form
 pG :: ExtendedPoint
-!pG = ExtendedPoint g_x g_y 1 ((g_x * g_y) `mod` p)
+pG = ExtendedPoint g_x g_y 1 ((g_x * g_y) `mod` p)
   where
     !g_y = (4 * modp_inv 5) `mod` p
     !g_x = recoverX g_y False

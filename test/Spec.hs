@@ -1,13 +1,18 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures    #-}
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE RankNTypes        #-}
+{-# LANGUAGE GADTs             #-}
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
 import           Control.Monad
+import           GHC.TypeLits
 
 import           Basement.From
 import           Basement.Nat
@@ -19,6 +24,9 @@ import           Foundation.Check.Main
 
 import qualified Crypto.Math.Edwards25519 as Edwards25519
 import qualified Crypto.ECC.Ed25519Donna as EdVariant
+
+import qualified Crypto.ECC.Ed25519BIP32 as EdBIP32
+
 import           Cardano.Crypto.Wallet
 import           Cardano.Crypto.Wallet.Encrypted
 import qualified Cardano.Crypto.Wallet.Pure as PureWallet
@@ -27,10 +35,15 @@ import qualified Data.ByteArray as B (convert)
 import           Crypto.Error
 import           Crypto.Random (drgNewTest, withDRG)
 import qualified Crypto.Random as Random
+import           Crypto.Math.Bits
+import qualified Crypto.Math.Bytes as Bytes
 import           Data.Word
 import           Data.Bits
 import           Data.Monoid ((<>))
 import           Data.Proxy
+
+import           Data.Type.Equality
+import           Utils
 
 import qualified Crypto.Encoding.BIP39 as BIP39
 import qualified Cardano.Crypto.Encoding.Seed as PW
@@ -145,7 +158,7 @@ testHdDerivation =
          in verify cPub dummyMsg (sign noPassphrase cPrv dummyMsg)
 -}
 
-testEncrypted dscheme =
+testEncrypted =
     [ Property "pub(sec) = pub(encrypted(no-pass, sec))" (pubEq noPassphrase)
     , Property "pub(sec) = pub(encrypted(dummy, sec))" (pubEq dummyPassphrase)
     , Property "pub(sec) = pub(encrypted(no-pass, sec))" (pubEqValid noPassphrase)
@@ -183,13 +196,13 @@ testEncrypted dscheme =
                     (Signature sig2) = encryptedSign ekey pass msg
                  in B.convert sig1 === sig2
             _ -> error "valid seed got a invalid result"
-    deriveNormalPublicKey pass (ValidSeed (Seed s)) nRaw =
+    deriveNormalPublicKey pass dscheme (ValidSeed (Seed s)) nRaw =
         let ekey = throwCryptoError $ encryptedCreate s pass dummyChainCode
             ckey = encryptedDerivePrivate dscheme ekey pass n
             (expectedPubkey, expectedChainCode) = encryptedDerivePublic dscheme (encryptedPublic ekey, encryptedChainCode ekey) n
          in encryptedPublic ckey === expectedPubkey
       where n = nRaw `mod` 0x80000000
-    deriveNormalChainCode pass (ValidSeed (Seed s)) nRaw =
+    deriveNormalChainCode pass dscheme (ValidSeed (Seed s)) nRaw =
         let ekey = throwCryptoError $ encryptedCreate s pass dummyChainCode
             ckey = encryptedDerivePrivate dscheme ekey pass n
             (expectedPubkey, expectedChainCode) = encryptedDerivePublic dscheme (encryptedPublic ekey, encryptedChainCode ekey) n
@@ -255,8 +268,8 @@ pointToPublic = throwCryptoError . EdVariant.publicKey . Edwards25519.unPointCom
 scalarToSecret :: Edwards25519.Scalar -> EdVariant.SecretKey
 scalarToSecret = throwCryptoError . EdVariant.secretKey . Edwards25519.unScalar
 
-testChangePassphrase :: DerivationScheme -> [Test]
-testChangePassphrase dscheme =
+testChangePassphrase :: [Test]
+testChangePassphrase =
     [ Property "change-passphrase-publickey-stable" pubEq
     , Property "normal-derive-key-different-passphrase-stable" deriveNormalEq
     , Property "hardened-derive-key-different-passphrase-stable" deriveHardenedEq
@@ -267,14 +280,14 @@ testChangePassphrase dscheme =
             xprv2 = encryptedChangePass p1 p2 xprv1
          in encryptedPublic xprv1 === encryptedPublic xprv2
 
-    deriveNormalEq (ValidSeed (Seed s)) (Passphrase p1) (Passphrase p2) n =
+    deriveNormalEq dscheme (ValidSeed (Seed s)) (Passphrase p1) (Passphrase p2) n =
         let xprv1 = throwCryptoError $ encryptedCreate s p1 dummyChainCode
             xprv2 = encryptedChangePass p1 p2 xprv1
             cPrv1 = encryptedDerivePrivate dscheme xprv1 p1 (toNormal n)
             cPrv2 = encryptedDerivePrivate dscheme xprv2 p2 (toNormal n)
          in encryptedPublic cPrv1 === encryptedPublic cPrv2
 
-    deriveHardenedEq (ValidSeed (Seed s)) (Passphrase p1) (Passphrase p2) n =
+    deriveHardenedEq dscheme (ValidSeed (Seed s)) (Passphrase p1) (Passphrase p2) n =
         let xprv1 = throwCryptoError $ encryptedCreate s p1 dummyChainCode
             xprv2 = encryptedChangePass p1 p2 xprv1
             cPrv1 = encryptedDerivePrivate dscheme xprv1 p1 (toHardened n)
@@ -289,6 +302,108 @@ testChangePassphrase dscheme =
 
 seedToSecret :: B.ByteString -> CryptoFailable EdVariant.SecretKey
 seedToSecret = EdVariant.secretKey
+
+series :: String -> [a] -> (a -> Test) -> Test
+series cmd l runProp = Group (fromList cmd) $ map runProp l
+
+withHardIndex :: Integer
+              -> (forall n . (KnownNat n, EdBIP32.ValidDerivationIndex n ~ 'True, EdBIP32.ValidDerivationHardIndex n ~ 'True)
+                  => EdBIP32.DerivationIndex 'EdBIP32.Hard n
+                  -> Test)
+              -> Test
+withHardIndex idxVal f =
+    case someNatVal idxVal of
+        Just (SomeNat (pidx :: Proxy n)) ->
+            case EdBIP32.getValidIndex pidx of
+                Nothing   -> error ("invalid index: " ++ show idxVal)
+                Just Refl ->
+                    case EdBIP32.getValidHardIndex pidx of
+                        Nothing   -> error ("invalid hard index: " ++ show idxVal)
+                        Just Refl -> f (EdBIP32.DerivationIndex :: EdBIP32.DerivationIndex 'EdBIP32.Hard n)
+        Nothing ->
+            error "not a known number"
+
+withSoftIndex :: Integer
+              -> (forall n . (KnownNat n, EdBIP32.ValidDerivationIndex n ~ 'True, EdBIP32.ValidDerivationSoftIndex n ~ 'True)
+                  => EdBIP32.DerivationIndex 'EdBIP32.Soft n
+                  -> Test)
+              -> Test
+withSoftIndex idxVal f =
+    case someNatVal idxVal of
+        Just (SomeNat (pidx :: Proxy n)) ->
+            case EdBIP32.getValidIndex pidx of
+                Nothing   -> error ("invalid index: " ++ show idxVal)
+                Just Refl ->
+                    case EdBIP32.getValidSoftIndex pidx of
+                        Nothing   -> error ("invalid soft index: " ++ show idxVal)
+                        Just Refl -> f (EdBIP32.DerivationIndex :: EdBIP32.DerivationIndex 'EdBIP32.Soft n)
+        Nothing ->
+            error "not a known number"
+
+testEdBIP32 :: [Test]
+testEdBIP32 =
+    [ Property "Xprv creation" $ \rsk rcc ->
+        let extPriv = makeXprv rsk rcc
+            k       = makeEdBip32 rsk rcc
+         in xprvEqKey extPriv k
+    , Property "pub same" $ \rsk rcc ->
+        let extPriv = makeXprv rsk rcc
+            k       = makeEdBip32 rsk rcc
+         in xprvEqPublicKey (toXPub extPriv) (EdBIP32.toPublic k)
+    , series "verify-hard-secret-derivation" hardIdx $ \idx ->
+        withHardIndex idx $ \hIdx ->
+            Property (fromList $ show idx) $ \rsk rcc ->
+                let extPriv = makeXprv rsk rcc
+                    cPrv1   = deriveXPrv DerivationScheme2 noPassphrase extPriv (fromIntegral idx)
+                    k       = makeEdBip32 rsk rcc
+                    cK      = EdBIP32.derive hIdx k
+                 in xprvEqKey cPrv1 cK
+    , series "verify-soft-secret-derivation" softIdx $ \idx ->
+        withSoftIndex idx $ \hIdx ->
+            Property (fromList $ show idx) $ \rsk rcc ->
+                let extPriv = makeXprv rsk rcc
+                    cPrv1   = deriveXPrv DerivationScheme2 noPassphrase extPriv (fromIntegral idx)
+                    k       = makeEdBip32 rsk rcc
+                    cK      = EdBIP32.derive hIdx k
+                 in xprvEqKey cPrv1 cK
+    ]
+  where
+
+    makeEdBip32 (RandomSecretKey k) (RandomChainCode cc) =
+        let (s1,s2)  = B.splitAt 32 k
+         in (packN s1, packN s2, EdBIP32.ChainCode $ packBytesN cc)
+
+    softIdx = [1..9]
+    hardIdx = [0x80000000..0x80000003] ++ [0xf00f0001..0xf00f0004] ++ [0x90000003..0x90000005]
+
+    xprvEqKey :: XPrv -> EdBIP32.Key -> Bool
+    xprvEqKey xPrv (k1,k2,EdBIP32.ChainCode cc) =
+        -- xprv is 64 bits of secret key, 32 bits of public key and 32 bits of chain code
+        let (s1, r1) = B.splitAt 32 $ B.convert xPrv
+            (s2, r2) = B.splitAt 32 r1
+            (_p , c) = B.splitAt 32 r2
+         in assertEq "chain code" (B.unpack c) (Bytes.unpack cc) &&
+            assertEq "key2" (B.unpack s2) (Bytes.unpack $ Bytes.fromBits Bytes.LittleEndian k2) &&
+            assertEq "key1" (B.unpack s1) (Bytes.unpack $ Bytes.fromBits Bytes.LittleEndian k1)
+
+    xprvEqPublicKey :: XPub -> EdBIP32.Public -> Bool
+    xprvEqPublicKey xPub (point, EdBIP32.ChainCode cc) =
+        assertEq "point" (B.unpack $ xpubPublicKey xPub) (Bytes.unpack $ Bytes.fromBits Bytes.LittleEndian point) &&
+        assertEq "public chain code" (B.unpack $ B.convert $ xpubChaincode xPub) (Bytes.unpack cc)
+
+    assertEq s l1 l2
+        | l1 /= l2  = error ("expected Eq for " ++ s ++ "\n" ++ "  wallet: " ++ dumpRaw l1 ++ "\n  alt   : " ++ dumpRaw l2)
+        | otherwise = True
+
+
+    packN :: B.ByteString -> FBits 256
+    packN = Bytes.toBits Bytes.LittleEndian . Bytes.pack . B.unpack
+
+    packBytesN :: B.ByteString -> Bytes.Bytes 32
+    packBytesN = Bytes.pack . B.unpack
+
+    --unpackN :: KnownNat n => FBits n -> B.ByteString
+    --unpackN = B.pack . binFromFBits
 
 -- -------------------------------------------------------------------------- --
 --                            Encoding/Seed                                   --
@@ -323,9 +438,10 @@ testCardanoCryptoEncoding = Group "paper-wallet"
 main :: IO ()
 main = defaultMain $ Group "cardano-crypto"
     [ Group "edwards25519-arithmetic" testEdwards25519
+    , Group "edwards25519-BIP32" testEdBIP32
     , Group "point-addition" testPointAdd
-    , Group "encrypted" (testEncrypted DerivationScheme1)
-    , Group "change-pass" (testChangePassphrase DerivationScheme1)
+    , Group "encrypted" testEncrypted
+    , Group "change-pass" testChangePassphrase
     , BIP39.tests
     , testCardanoCryptoEncoding
     , testVectorPaperWallet

@@ -14,9 +14,11 @@ module Crypto.DLEQ
     ) where
 
 import           Foundation
+import           Basement.Compat.Semigroup (Semigroup)
 import           Foundation.Parser (elements)
 import           Crypto.ECC.P256
 import           Data.ByteArray (Bytes,ByteArrayAccess,ByteArray)
+
 
 import Data.List (zipWith)
 import Data.Foldable (concatMap)
@@ -32,7 +34,7 @@ data DLEQ = DLEQ
     } deriving (Show,Eq,Typeable)
 
 newtype Challenge = Challenge Bytes
-    deriving (Show,Eq,Ord,Typeable,Monoid,ByteArrayAccess, ByteArray)
+    deriving (Show,Eq,Ord,Typeable,Semigroup,Monoid,ByteArrayAccess,ByteArray)
 instance I.HasParser Challenge where
     getParser = Challenge <$> I.getParser
 instance I.Display Challenge where
