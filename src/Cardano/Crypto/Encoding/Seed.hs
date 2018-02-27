@@ -47,9 +47,6 @@ module Cardano.Crypto.Encoding.Seed
     , MnemonicWords
     ) where
 
-import Inspector.Display
-import Inspector.Parser
-
 import Foundation
 import Foundation.Check
 import Basement.Nat
@@ -84,16 +81,6 @@ instance Arbitrary ScrambleIV where
     arbitrary = do
         l <- arbitrary :: Gen (ListN 4 Word8)
         pure $ throwCryptoError $ mkScrambleIV $ B.pack $ ListN.unListN l
-instance Display ScrambleIV where
-    display = displayByteArrayAccess
-    encoding _ = "hexadecimal"
-    comment _ = Just "valid value are only 4 bytes long (8 hexadecimal characters)"
-instance HasParser ScrambleIV where
-    getParser = do
-        bs <- strParser >>= parseByteArray
-        case mkScrambleIV bs of
-            CryptoFailed err -> reportError (Expected "ScrambleIV" (show err))
-            CryptoPassed r   -> pure r
 
 mkScrambleIV :: ByteString -> CryptoFailable ScrambleIV
 mkScrambleIV bs

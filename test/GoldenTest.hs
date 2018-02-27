@@ -35,6 +35,8 @@ import           Crypto.Encoding.BIP39
 import qualified Crypto.Encoding.BIP39.English as English
 import qualified Cardano.Crypto.Praos.VRF as VRF
 
+import Test.Orphans
+
 main :: IO ()
 main = defaultMain $ do
     goldenPaperwallet

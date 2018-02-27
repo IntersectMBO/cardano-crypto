@@ -37,7 +37,6 @@ library
                        Crypto.Encoding.BIP39.English
   build-depends:       base >= 4.7 && < 5
                      , memory
-                     , inspector
                      , deepseq
                      , bytestring
                      , basement
@@ -92,6 +91,7 @@ test-suite cardano-crypto-golden-tests
 executable golden-tests
   hs-source-dirs:      test
   main-is:             GoldenTest.hs
+  other-modules:       Test.Orphans
   build-depends:       base
                      , basement
                      , foundation
