@@ -23,6 +23,7 @@ instance Arbitrary DerivationScheme where
 instance Display DerivationScheme where
     encoding _ = "string \"derivation-scheme1\""
     display DerivationScheme1 = "\"derivation-scheme1\""
+    comment _ = Just "valid values are: \"derivation-scheme1\""
 instance HasParser DerivationScheme where
     getParser = do
         str <- strParser

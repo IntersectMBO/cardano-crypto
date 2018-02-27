@@ -77,8 +77,9 @@ import           GHC.Stack
 newtype XPrv = XPrv EncryptedKey
     deriving (NFData, ByteArrayAccess)
 instance Display XPrv where
-    encoding _ = "hex"
     display = displayByteArrayAccess
+    encoding _ = "hexadecimal"
+    comment _ = Just "encrypted extended private key"
 instance HasParser XPrv where
     getParser = strParser >>= parseByteArray >>= \s -> case xprv (s :: ByteString) of
         Left err -> reportError $ Expected "xPrv" (F.fromList err)
@@ -91,8 +92,9 @@ data XPub = XPub
 
 instance NFData XPub
 instance Display XPub where
-    encoding _ = "hex"
     display = displayByteArrayAccess . unXPub
+    encoding _ = "hexadecimal"
+    comment _ = Just "extended public key"
 instance HasParser XPub where
     getParser = strParser >>= parseByteArray >>= \s -> case xpub (s :: ByteString) of
         Left err -> reportError $ Expected "xPub" (F.fromList err)
@@ -102,8 +104,9 @@ newtype XSignature = XSignature
     { unXSignature :: ByteString
     } deriving (Show, Eq, Ord, NFData, Hashable)
 instance Display XSignature where
-    encoding _ = "hex"
     display (XSignature bs) = displayByteArrayAccess bs
+    encoding _ = "hexadecimal"
+    comment _ = Just "extended signature"
 instance HasParser XSignature where
     getParser = strParser >>= parseByteArray >>= \s -> case xsignature s of
         Left err -> reportError $ Expected "XSignature" (F.fromList err)
