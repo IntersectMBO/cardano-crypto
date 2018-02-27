@@ -177,6 +177,6 @@ sign passphrase (XPrv ekey) ba =
 
 verify :: ByteArrayAccess msg => XPub -> msg -> XSignature -> Bool
 verify (XPub point _) ba (XSignature signature) =
-    let pub = throwCryptoError $ Ed25519.publicKey $ point
-        sig = throwCryptoError $ Ed25519.signature $ signature
+    let pub = throwCryptoError $ Ed25519.publicKey point
+        sig = throwCryptoError $ Ed25519.signature signature
      in Ed25519.verify pub ba sig
