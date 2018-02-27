@@ -5,3 +5,5 @@
 .stack-work
 dist
 .dir-locals.el
+
+tests/**/*.md
