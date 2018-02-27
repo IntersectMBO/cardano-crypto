@@ -210,8 +210,8 @@ static int index_is_hardened(uint32_t index)
  * so it's not going to overflow when adding to sk2 */
 void scalar_add_no_overflow(const ed25519_secret_key sk1, const ed25519_secret_key sk2, ed25519_secret_key res)
 {
-    uint16_t r = 0;
-    for (int i = 0; i < 32; i++) {
+    uint16_t r = 0; int i;
+    for (i = 0; i < 32; i++) {
 	    r = (uint16_t) sk1[i] + (uint16_t) sk2[i] + r;
 	    res[i] = (uint8_t) r;
 	    r >>= 8;
