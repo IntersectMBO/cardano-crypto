@@ -63,6 +63,7 @@ test-suite cardano-crypto-test
                        Test.Cardano.Crypto
                        Test.Cardano.Crypto.Praos
                        Test.Cardano.Crypto.Praos.VRF
+                       Utils
   build-depends:       base
                      , bytestring
                      , memory

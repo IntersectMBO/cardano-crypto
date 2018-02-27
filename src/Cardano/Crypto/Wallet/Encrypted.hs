@@ -165,6 +165,7 @@ type CDerivationScheme = CInt
 
 dschemeToC :: DerivationScheme -> CDerivationScheme
 dschemeToC DerivationScheme1 = 1
+dschemeToC DerivationScheme2 = 2
 
 -- return 0 if success, otherwise 1 if structure of seed not proper
 foreign import ccall "wallet_encrypted_from_secret"
