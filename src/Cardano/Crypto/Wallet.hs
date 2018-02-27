@@ -77,6 +77,7 @@ import           GHC.Stack
 newtype XPrv = XPrv EncryptedKey
     deriving (NFData, ByteArrayAccess)
 instance Display XPrv where
+    encoding _ = "hex"
     display = displayByteArrayAccess
 instance HasParser XPrv where
     getParser = strParser >>= parseByteArray >>= \s -> case xprv (s :: ByteString) of
@@ -90,6 +91,7 @@ data XPub = XPub
 
 instance NFData XPub
 instance Display XPub where
+    encoding _ = "hex"
     display = displayByteArrayAccess . unXPub
 instance HasParser XPub where
     getParser = strParser >>= parseByteArray >>= \s -> case xpub (s :: ByteString) of
@@ -100,6 +102,7 @@ newtype XSignature = XSignature
     { unXSignature :: ByteString
     } deriving (Show, Eq, Ord, NFData, Hashable)
 instance Display XSignature where
+    encoding _ = "hex"
     display (XSignature bs) = displayByteArrayAccess bs
 instance HasParser XSignature where
     getParser = strParser >>= parseByteArray >>= \s -> case xsignature s of

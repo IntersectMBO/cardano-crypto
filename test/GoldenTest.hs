@@ -27,15 +27,32 @@ import Inspector
 import Inspector.Display
 import Inspector.Parser
 
+import Data.ByteArray (Bytes, convert)
+
 import           Cardano.Crypto.Wallet
 import           Cardano.Crypto.Encoding.Seed
 import           Crypto.Encoding.BIP39
 import qualified Crypto.Encoding.BIP39.English as English
+import qualified Cardano.Crypto.Praos.VRF as VRF
 
 main :: IO ()
 main = defaultMain $ do
     goldenPaperwallet
     goldenHDWallet
+    goldenVRF
+
+type GoldenVRF
+    = "cardano" :> "crypto" :> "VRF"
+      :> Payload "random"  VRF.SecretKey
+      :> Payload "message" String
+      :> Payload "secret"  VRF.SecretKey
+      :> ( Payload "output" Bytes
+         , Payload "proof" VRF.Proof
+         )
+
+goldenVRF :: GoldenT ()
+goldenVRF = golden (Proxy :: Proxy GoldenVRF) $ \r msg sec ->
+    first convert (VRF.generate' r msg sec)
 
 -- -------------------------------------------------------------------------- --
 
@@ -105,6 +122,7 @@ newtype ChainCodePath = Root [Word32]
 instance Arbitrary ChainCodePath where
     arbitrary = Root <$> arbitrary
 instance Display ChainCodePath where
+    encoding _ = "m[([0-9]+|[0-9]+')]*"
     display (Root l) = "\"" <> intercalate "/" ((:) "m" $ f <$> l) <> "\""
       where
         f :: Word32 -> String
@@ -140,6 +158,7 @@ instance (KnownNat n, NatWithinBound Int n) => Arbitrary (Mnemonic 'English n) w
         pure $ Mnemonic $ LN.map (dictionaryWordToIndex englishDict) r
 
 instance Display (Mnemonic 'English n) where
+    encoding _ = "a list of english words as defined in BIP39"
     display (Mnemonic l) = "\"" <> intercalate " " (LN.unListN $ LN.map (dictionaryIndexToWord englishDict) l) <> "\""
 instance (KnownNat n, NatWithinBound Int n) => HasParser (Mnemonic 'English n) where
     getParser = do

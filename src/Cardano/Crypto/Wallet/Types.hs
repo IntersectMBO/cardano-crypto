@@ -21,6 +21,7 @@ data DerivationScheme = DerivationScheme1
 instance Arbitrary DerivationScheme where
     arbitrary = pure DerivationScheme1
 instance Display DerivationScheme where
+    encoding _ = "string \"derivation-scheme1\""
     display DerivationScheme1 = "\"derivation-scheme1\""
 instance HasParser DerivationScheme where
     getParser = do

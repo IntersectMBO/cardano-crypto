@@ -24,12 +24,15 @@ library
                        Cardano.Crypto.Wallet.Types
                        Cardano.Crypto.Wallet.Pure
                        Cardano.Crypto.Encoding.Seed
+                       Cardano.Crypto.Praos.VRF
                        Crypto.Math.Edwards25519
                        Crypto.Math.Bits
                        Crypto.Math.Bytes
                        Crypto.Math.NatMath
                        Crypto.ECC.Ed25519Donna
                        Crypto.ECC.Ed25519BIP32
+                       Crypto.ECC.P256
+                       Crypto.DLEQ
                        Crypto.Encoding.BIP39
                        Crypto.Encoding.BIP39.English
   build-depends:       base >= 4.7 && < 5
@@ -42,6 +45,7 @@ library
                      , cryptonite >= 0.22
                      , cryptonite-openssl >= 0.5
                      , hashable
+                     , integer-gmp
   default-language:    Haskell2010
   C-sources:           cbits/ed25519/ed25519.c
                        cbits/encrypted_sign.c
@@ -55,6 +59,10 @@ test-suite cardano-crypto-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   other-modules:       TestVectors.PaperWallet
+                       Test.Cardano
+                       Test.Cardano.Crypto
+                       Test.Cardano.Crypto.Praos
+                       Test.Cardano.Crypto.Praos.VRF
   build-depends:       base
                      , bytestring
                      , memory
