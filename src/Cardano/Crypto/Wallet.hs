@@ -79,6 +79,7 @@ data XPub = XPub
     } deriving (Eq, Show, Ord, Typeable, Generic)
 
 instance NFData XPub
+instance Hashable XPub
 
 newtype XSignature = XSignature
     { unXSignature :: ByteString
