@@ -52,7 +52,7 @@ library
   include-dirs:        cbits/ed25519 cbits
   default-extensions:  GeneralizedNewtypeDeriving
   ghc-options:         -Wall
-  cc-options:          -Wall
+  cc-options:          -Wall -Wno-unused-function
 
 test-suite cardano-crypto-test
   type:                exitcode-stdio-1.0
