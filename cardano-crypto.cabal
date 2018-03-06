@@ -78,6 +78,7 @@ test-suite cardano-crypto-golden-tests
                      , basement
                      , foundation
                      , memory
+                     , bytestring
                      , cryptonite
                      , inspector
                      , cardano-crypto
@@ -93,6 +94,7 @@ executable golden-tests
                      , basement
                      , foundation
                      , memory
+                     , bytestring
                      , cryptonite
                      , inspector
                      , cardano-crypto

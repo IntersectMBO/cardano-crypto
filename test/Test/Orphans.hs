@@ -17,6 +17,7 @@ import Inspector.Parser
 import Crypto.Error
 
 import Data.ByteArray (Bytes)
+import Data.ByteString (ByteString)
 
 import qualified Cardano.Crypto.Encoding.Seed as Seed
 import qualified Crypto.ECC.P256 as P256
@@ -136,3 +137,8 @@ instance (KnownNat n, KnownNat csz, NatWithinBound Int n, BIP39.ValidEntropySize
         case BIP39.toEntropy bs of
             Nothing -> reportError (Expected "Entropy" "not the correct size")
             Just r  -> pure r
+instance Display ByteString where
+    display = displayByteArrayAccess
+    encoding _ = "hexadecimal"
+instance HasParser ByteString where
+    getParser = strParser >>= parseByteArray
