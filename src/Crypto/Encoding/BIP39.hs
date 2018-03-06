@@ -221,12 +221,12 @@ wordsToEntropy ms =
 cardanoSlSeed :: forall n csz mw . ConsistentEntropy n mw csz
               => Proxy n
               -> MnemonicSentence mw
-              -> Seed
+              -> Maybe Seed
 cardanoSlSeed _ mw =
     let e = wordsToEntropy @n @csz @mw mw
      in case e of
-         Nothing -> error ""
-         Just (Entropy b _) -> BA.convert $ blake2b b
+         Nothing -> Nothing
+         Just (Entropy b _) -> Just $ BA.convert $ blake2b b
   where blake2b :: ByteString -> Digest Blake2b_256
         blake2b = Hash.hash
 

@@ -7,10 +7,10 @@ shielded_input = "picnic leave file debris evolve bring toilet response run inch
 
 # Test Vector 2
 TestVector
-input = "legal winner thank year wave sausage worth useful legal sausage inch year"
+input = "fold parrot feature figure stay blanket woman grain huge orphan key exile"
 iv = "00010203"
 passphrase = "Cardano Ada"
-shielded_input = "anxiety urge mirror fade parrot hurt junior fabric history screen gravity craft coral above actor"
+shielded_input = "fall tomato route inflict neither avocado digital left retreat ring system job coral above able"
 
 # Test Vector 3
 TestVector

@@ -1,7 +1,7 @@
 # Test Vector 1
 TestVector
-input = "legal winner thank year wave sausage worth useful legal winner thank yellow clean inch leave picnic file debris simple decade wing"
+input = "divide noodle violin same primary foam owner humor orbit cattle mountain desk sample arrest sadness gospel mystery scale hard onion jeans"
 iv = "00000000"
 passphrase = ""
-shielded_input = "robust portion original miracle armed scout glance danger cost cannon warrior raise select illegal tiger burger sad tuna mutual fancy source abandon abandon arrange"
+shielded_input = "near cattle palace cream entry carbon pattern sadness endorse correct mechanic manage lobster menu lizard goat review upper dial embody source abandon abandon abandon"
 
