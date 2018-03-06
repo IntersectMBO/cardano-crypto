@@ -161,6 +161,15 @@ toEntropy bs
     | BS.length bs*8 == natValInt (Proxy @n) = Just $ Entropy bs (checksum @csz bs)
     | otherwise                              = Nothing
 
+toEntropyCheck :: forall n csz
+                . (KnownNat n, KnownNat csz, NatWithinBound Int n, ValidEntropySize n, CheckSumBits n ~ csz)
+               => ByteString
+               -> Checksum csz
+               -> Maybe (Entropy n)
+toEntropyCheck bs s = case toEntropy bs of
+    Just e@(Entropy _ cs) | cs == s -> Just e
+    _                               -> Nothing
+
 -- | Type Constraint Alias to check the entropy size, the number of mnemonic
 -- words and the checksum size is consistent. i.e. that the following is true:
 --
@@ -194,17 +203,18 @@ wordsToEntropy ms =
         -- is the highest first 11 bits of the entropy.
         entropy         = ListN.foldl' (\acc x -> acc `shiftL` 11 + fromIntegral (unWordIndex x)) 0 ms
         initialEntropy = i2ospOf_ nb (entropy `shiftR` fromIntegral checksumsize)
-        -- initialEntropy = BS.take nb entropy
-        -- cs = BS.drop nb entropy
-        e = toEntropy initialEntropy
+        bs = i2ospOf_ 1 (entropy .&. mask) :: ByteString
+        cs = Checksum $ bs `BA.index` 1
+        e = toEntropyCheck initialEntropy cs
      in e
   where
     checksumsize = natVal (Proxy @checksumsize)
     entropysize  = natVal (Proxy @entropysize)
-    -- number of bytes in the initial entropy
     nb  = fromInteger entropysize `div` 8
-    -- number of word in the mnemonic sentence
-    -- mw  = natVal (Proxy @mw)
+    mask = go checksumsize 1
+      where
+        go 0 acc = acc
+        go x acc = go (x-1) (acc `shiftR` 1 .|. 1)
 
 -- | this is not a BIP39 function but is the function used in cardano-sl
 -- to generate a seed from a mnemonic phrase.
