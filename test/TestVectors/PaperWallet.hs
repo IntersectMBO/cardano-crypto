@@ -65,7 +65,7 @@ mkTest _ (passphrase, mnemonicwords, scrambledref, iv) = Property (show mnemonic
         dictRevLookup x = maybe (error $ "word not in the english dictionary: " <>  x) (wordIndex . fromIntegral) $ x `elemIndex` BIP39English.words
         mw = ListN.map dictRevLookup mnemonicwords
     in case wordsToEntropy @n mw of
-        Nothing -> error "cannot generate entropy from mnemonic in test vector..."
+        Nothing -> propertyFail "cannot generate entropy from mnemonic in test vector..."
         Just e  ->
             let scrambled = scramble @n iv e passphrase
                 mws       = entropyToWords @ns scrambled
@@ -83,9 +83,9 @@ testVector128 =
       )
     , ( "Cardano Ada"
       , fromMaybe (error "test vector's mnemoic sentence not enough elements")
-                  (ListN.toListN $ words "legal winner thank year wave sausage worth useful legal sausage inch year")
+                  (ListN.toListN $ words "place document tooth joy hospital gift unlock resource tooth supply claim try")
       , fromMaybe (error "test vector's mnemoic sentence not enough elements")
-                  (ListN.toListN ["anxiety","urge","mirror","fade","parrot","hurt","junior","fabric","history","screen","gravity","craft","coral","above","actor"])
+                  (ListN.toListN ["lift","much","trade","green","panther","assault","merry","iron","cool","pear","episode","maid","coral","above","access"])
       , throwCryptoError $ mkScrambleIV "\0\1\2\3"
       )
     , ( "This is a very long passphrase. This is a very long passphrase. This is a very long passphrase. This is a very long passphrase."
@@ -101,9 +101,9 @@ testVector160 :: [(Passphrase, ListN 15 String, ListN 18 String, ScrambleIV)]
 testVector160 =
     [ ( mempty
       , fromMaybe (error "test vector's mnemoic sentence not enough elements")
-                  (ListN.toListN $ words "legal winner thank year wave sausage worth useful legal winner thank yellow clean inch leave")
+                  (ListN.toListN $ words "tail island situate hill mechanic retreat negative uncle layer faith behave harbor kitchen sock relief")
       , fromMaybe (error "test vector's mnemoic sentence not enough elements")
-                  (ListN.toListN ["obvious","evidence","slow","embark","worry","proof","ignore","ordinary","debris","sibling","hunt","kind","tonight","feed","village","abandon","abandon","across"])
+                  (ListN.toListN ["client","miracle","minute","task","bullet","cycle","input","unable","gloom","rich","educate","until","legend","erase","lab","abandon","abandon","accuse"])
       , throwCryptoError $ mkScrambleIV "\0\0\0\0"
       )
     ]
@@ -112,9 +112,9 @@ testVector192 :: [(Passphrase, ListN 18 String, ListN 21 String, ScrambleIV)]
 testVector192 =
     [ ( mempty
       , fromMaybe (error "test vector's mnemoic sentence not enough elements")
-                  (ListN.toListN $ words "legal winner thank year wave sausage worth useful legal winner thank yellow clean inch leave picnic file debris")
+                  (ListN.toListN $ words "erosion find kingdom cable glue umbrella bid capital chat trial pass matter nose vault bring quote enforce sketch")
       , fromMaybe (error "test vector's mnemoic sentence not enough elements")
-                  (ListN.toListN ["shop","magnet","gaze","course","option","obscure","mouse","wing","flat","ticket","decade","ill","monster","tell","vivid","simple","practice","trend","abandon","abandon","arm"])
+                  (ListN.toListN ["suffer","genius","arrow","access","travel","assault","leg","fee","width","client","shove","aisle","win","olive","danger","labor","labor","hybrid","abandon","abandon","access"])
       , throwCryptoError $ mkScrambleIV "\0\0\0\0"
       )
     ]
@@ -123,9 +123,9 @@ testVector224 :: [(Passphrase, ListN 21 String, ListN 24 String, ScrambleIV)]
 testVector224 =
     [ ( mempty
       , fromMaybe (error "test vector's mnemoic sentence not enough elements")
-                  (ListN.toListN $ words "legal winner thank year wave sausage worth useful legal winner thank yellow clean inch leave picnic file debris simple decade wing")
+                  (ListN.toListN $ words "strong student orbit sugar dune live long fitness wide goat famous fitness equal degree much enforce divide subject dizzy clip legend")
       , fromMaybe (error "test vector's mnemoic sentence not enough elements")
-                  (ListN.toListN ["robust","portion","original","miracle","armed","scout","glance","danger","cost","cannon","warrior","raise","select","illegal","tiger","burger","sad","tuna","mutual","fancy","source","abandon","abandon","arrange"])
+                  (ListN.toListN ["fatigue","thumb","parade","dash","orphan","salute","mind","swim","edit","liar","material","bike","palm","daring","orchard","floor","plate","indicate","reopen","super","exotic","abandon","abandon","bar"])
       , throwCryptoError $ mkScrambleIV "\0\0\0\0"
       )
     ]

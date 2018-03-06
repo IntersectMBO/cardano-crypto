@@ -126,9 +126,9 @@ type family CheckSumBits (n :: Nat) :: Nat where
     CheckSumBits 256 = 8
 
 checksum :: forall csz . KnownNat csz => ByteString -> Checksum csz
-checksum bs = Checksum (hashWith SHA256 bs `BA.index` 0)
-  --where
-  --  csz = natVal (Proxy @csz)
+checksum bs = Checksum $ (hashWith SHA256 bs `BA.index` 0) `shiftR` (8 - csz)
+  where
+    csz = fromIntegral $ natVal (Proxy @csz)
 
 data Entropy (n :: Nat) = Entropy ByteString (Checksum (CheckSumBits n))
     deriving (Show,Eq,Typeable)
@@ -167,8 +167,9 @@ toEntropyCheck :: forall n csz
                -> Checksum csz
                -> Maybe (Entropy n)
 toEntropyCheck bs s = case toEntropy bs of
-    Just e@(Entropy _ cs) | cs == s -> Just e
-    _                               -> Nothing
+    Nothing -> Nothing
+    Just e@(Entropy _ cs) | cs == s   -> Just e
+                          | otherwise -> Nothing
 
 -- | Type Constraint Alias to check the entropy size, the number of mnemonic
 -- words and the checksum size is consistent. i.e. that the following is true:
@@ -203,18 +204,13 @@ wordsToEntropy ms =
         -- is the highest first 11 bits of the entropy.
         entropy         = ListN.foldl' (\acc x -> acc `shiftL` 11 + fromIntegral (unWordIndex x)) 0 ms
         initialEntropy = i2ospOf_ nb (entropy `shiftR` fromIntegral checksumsize)
-        bs = i2ospOf_ 1 (entropy .&. mask) :: ByteString
-        cs = Checksum $ bs `BA.index` 1
-        e = toEntropyCheck initialEntropy cs
-     in e
+        cs = Checksum $ fromIntegral (entropy .&. mask)
+     in toEntropyCheck initialEntropy cs
   where
     checksumsize = natVal (Proxy @checksumsize)
     entropysize  = natVal (Proxy @entropysize)
     nb  = fromInteger entropysize `div` 8
-    mask = go checksumsize 1
-      where
-        go 0 acc = acc
-        go x acc = go (x-1) (acc `shiftR` 1 .|. 1)
+    mask = 2 ^ checksumsize - 1
 
 -- | this is not a BIP39 function but is the function used in cardano-sl
 -- to generate a seed from a mnemonic phrase.
@@ -241,7 +237,7 @@ entropyToWords :: forall n csz mw . ConsistentEntropy n mw csz
 entropyToWords (Entropy bs (Checksum w)) =
     maybe (error "toListN_") id $ ListN.toListN $ reverse $ loop mw g
   where
-    g = (os2ip (BS.reverse bs) `shiftL` fromIntegral csz) .|. (fromIntegral w `shiftR` (8 - fromIntegral csz))
+    g = (os2ip (BS.reverse bs) `shiftL` fromIntegral csz) .|. fromIntegral w
     csz = natVal (Proxy @csz)
     mw  = natVal (Proxy @mw)
     loop nbWords acc
