@@ -206,6 +206,12 @@ wordsToEntropy ms =
     -- number of word in the mnemonic sentence
     -- mw  = natVal (Proxy @mw)
 
+-- | this is not a BIP39 function but is the function used in cardano-sl
+-- to generate a seed from a mnemonic phrase.
+--
+-- https://github.com/input-output-hk/cardano-sl/blob/f5b8073b92b8219ae5fbb038c0ceb4a19502a86b/wallet/src/Pos/Util/BackupPhrase.hs#L59-L65
+-- https://github.com/input-output-hk/cardano-sl/blob/429efc2426c63802ae86789f5b828dcbb42de88a/wallet/src/Pos/Util/Mnemonics.hs#L66-L87
+--
 cardanoSlSeed :: forall n csz mw . ConsistentEntropy n mw csz
               => Proxy n
               -> MnemonicSentence mw
