@@ -28,6 +28,7 @@ import Inspector.Display
 import Inspector.Parser
 
 import Data.ByteArray (Bytes, convert)
+import qualified Data.ByteArray as B
 
 import           Cardano.Crypto.Wallet
 import           Cardano.Crypto.Encoding.Seed
@@ -88,6 +89,7 @@ type HDWallet n
       :> ( Payload "xPub" XPub
          , Payload "xPriv" XPrv
          , Payload "signature" XSignature
+         , Payload "seed" Seed
          )
 
 goldenHDWallet :: GoldenT ()
@@ -96,15 +98,23 @@ goldenHDWallet = group $ do
             \private keys which are _encrypted_ with a passphrase. A passphrase can be empty as well.\n\
             \Under this schema, we support only hardened key derivation."
 
-    golden (Proxy :: Proxy (HDWallet 128)) runTest
-    golden (Proxy :: Proxy (HDWallet 160)) runTest
-    golden (Proxy :: Proxy (HDWallet 192)) runTest
-    golden (Proxy :: Proxy (HDWallet 224)) runTest
-    golden (Proxy :: Proxy (HDWallet 256)) runTest
+    golden (Proxy :: Proxy (HDWallet 128)) (runTest (Proxy @128))
+    golden (Proxy :: Proxy (HDWallet 160)) (runTest (Proxy @160))
+    golden (Proxy :: Proxy (HDWallet 192)) (runTest (Proxy @192))
+    golden (Proxy :: Proxy (HDWallet 224)) (runTest (Proxy @224))
+    golden (Proxy :: Proxy (HDWallet 256)) (runTest (Proxy @256))
   where
-    runTest (Mnemonic mw) pw ds (Root path) toSign =
+    runTest :: forall n csz mw . ConsistentEntropy n mw csz
+            => Proxy n
+            -> Mnemonic 'English mw
+            -> Passphrase
+            -> DerivationScheme
+            -> ChainCodePath
+            -> String
+            -> (XPub, XPrv, XSignature, Seed)
+    runTest p (Mnemonic mw) pw ds (Root path) toSign =
         let -- 1. retrieve the seed
-            seed = sentenceToSeed mw englishDict "TREZOR"
+            seed = cardanoSlSeed p mw
             -- 2. generate from the seed
             master = generate seed pw
             -- 3. get the XPrv from the master and the path
@@ -113,7 +123,7 @@ goldenHDWallet = group $ do
             pub = toXPub priv
             -- 5. sign some data
             s = sign pw priv toSign
-         in (pub, priv, s)
+         in (pub, priv, s, seed)
       where
         deriveWith :: XPrv -> [Word32] -> XPrv
         deriveWith = foldl' (deriveXPrv ds pw)

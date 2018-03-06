@@ -26,6 +26,7 @@ module Crypto.Encoding.BIP39
     , entropyToWords
     , wordsToEntropy
     , sentenceToSeed
+    , cardanoSlSeed
 
     -- * helpers
     , ConsistentEntropy
@@ -51,7 +52,7 @@ import           Data.Monoid
 import           Data.Word
 import           Data.Maybe (fromMaybe)
 import           Data.List (intersperse, elemIndex)
-import qualified Data.ByteArray as BA (index)
+import qualified Data.ByteArray as BA (index, convert)
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 
@@ -61,7 +62,8 @@ import           Data.Kind (Constraint)
 import           GHC.TypeLits
 import           GHC.Exts (IsList(..))
 
-import           Crypto.Hash (hashWith, SHA256(..))
+import           Crypto.Hash (hashWith, SHA256(..), Blake2b_256, Digest)
+import qualified Crypto.Hash as Hash
 import           Crypto.Number.Serialize (os2ip, i2ospOf_)
 import qualified Crypto.KDF.PBKDF2 as PBKDF2
 
@@ -203,6 +205,24 @@ wordsToEntropy ms =
     nb  = fromInteger entropysize `div` 8
     -- number of word in the mnemonic sentence
     -- mw  = natVal (Proxy @mw)
+
+-- | this is not a BIP39 function but is the function used in cardano-sl
+-- to generate a seed from a mnemonic phrase.
+--
+-- https://github.com/input-output-hk/cardano-sl/blob/f5b8073b92b8219ae5fbb038c0ceb4a19502a86b/wallet/src/Pos/Util/BackupPhrase.hs#L59-L65
+-- https://github.com/input-output-hk/cardano-sl/blob/429efc2426c63802ae86789f5b828dcbb42de88a/wallet/src/Pos/Util/Mnemonics.hs#L66-L87
+--
+cardanoSlSeed :: forall n csz mw . ConsistentEntropy n mw csz
+              => Proxy n
+              -> MnemonicSentence mw
+              -> Seed
+cardanoSlSeed _ mw =
+    let e = wordsToEntropy @n @csz @mw mw
+     in case e of
+         Nothing -> error ""
+         Just (Entropy b _) -> BA.convert $ blake2b b
+  where blake2b :: ByteString -> Digest Blake2b_256
+        blake2b = Hash.hash
 
 -- | Given an entropy of size n, Create a list
 entropyToWords :: forall n csz mw . ConsistentEntropy n mw csz
