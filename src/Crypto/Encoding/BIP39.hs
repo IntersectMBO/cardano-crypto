@@ -246,8 +246,6 @@ entropyToWords (Entropy bs (Checksum w)) =
 
 newtype Seed = Seed ByteString
   deriving (Show, Eq, Ord, Typeable, Semigroup, Monoid, ByteArrayAccess, ByteArray, IsString)
-instance Arbitrary Seed where
-    arbitrary = undefined -- TODO
 
 type Passphrase = String
 
