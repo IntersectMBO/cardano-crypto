@@ -114,7 +114,8 @@ goldenHDWallet = group $ do
             -> (XPub, XPrv, XSignature, Seed)
     runTest p (Mnemonic mw) pw ds (Root path) toSign =
         let -- 1. retrieve the seed
-            seed = fromMaybe undefined $ cardanoSlSeed p mw
+            seed = fromMaybe (error "Invalid Mnemonic, cannot retrieve the `Seed'")
+                             (cardanoSlSeed p mw)
             -- 2. generate from the seed
             master = generate seed pw
             -- 3. get the XPrv from the master and the path
