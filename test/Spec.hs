@@ -48,9 +48,8 @@ import           Utils
 import qualified Crypto.Encoding.BIP39 as BIP39
 import qualified Cardano.Crypto.Encoding.Seed as PW
 
+import qualified Test.Crypto as Crypto
 import qualified Test.Cardano as Cardano
-
-import           TestVectors.PaperWallet
 
 noPassphrase :: B.ByteString
 noPassphrase = ""
@@ -406,32 +405,6 @@ testEdBIP32 =
     --unpackN = B.pack . binFromFBits
 
 -- -------------------------------------------------------------------------- --
---                            Encoding/Seed                                   --
--- -------------------------------------------------------------------------- --
-
-testCardanoCryptoEncoding :: Test
-testCardanoCryptoEncoding = Group "paper-wallet"
-    [ go (Proxy @128)
-    , go (Proxy @160)
-    , go (Proxy @192)
-    , go (Proxy @224)
-    ]
-  where
-    go :: forall n m s
-        . ( PW.ConsistentEntropy n m s
-          , PW.ConsistentEntropy (n + PW.IVSizeBits) (m + PW.IVSizeWords) (BIP39.CheckSumBits (n + PW.IVSizeBits))
-          , Arbitrary (PW.Entropy n)
-          )
-       => Proxy n
-       -> Test
-    go p = Property ("unscramble . scramble @" <> sz <> " == id") $ \iv (e :: PW.Entropy n) p ->
-        let s = PW.scramble @n iv e p
-            u = PW.unscramble s p
-         in e === u
-      where
-         sz = fromList $ show $ natVal p
-
--- -------------------------------------------------------------------------- --
 --                              Main                                          --
 -- -------------------------------------------------------------------------- --
 
@@ -442,9 +415,7 @@ main = defaultMain $ Group "cardano-crypto"
     , Group "point-addition" testPointAdd
     , Group "encrypted" testEncrypted
     , Group "change-pass" testChangePassphrase
-    , BIP39.tests
-    , testCardanoCryptoEncoding
-    , testVectorPaperWallet
+    , Crypto.tests
     , Cardano.tests
     ]
     {-

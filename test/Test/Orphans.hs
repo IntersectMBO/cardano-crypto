@@ -131,12 +131,17 @@ instance Display VRF.Proof where
 instance Display (BIP39.Entropy n) where
     display = displayByteArrayAccess . BIP39.entropyRaw
     encoding _ = "hexadecimal"
-instance (KnownNat n, KnownNat csz, NatWithinBound Int n, BIP39.ValidEntropySize n, BIP39.CheckSumBits n ~ csz) => HasParser (BIP39.Entropy n) where
+instance (BIP39.ValidEntropySize n, BIP39.ValidChecksumSize n csz) => HasParser (BIP39.Entropy n) where
     getParser = do
         bs <- strParser >>= parseByteArray
-        case BIP39.toEntropy bs of
+        case BIP39.toEntropy (bs :: Bytes) of
             Nothing -> reportError (Expected "Entropy" "not the correct size")
             Just r  -> pure r
+instance Display BIP39.Seed where
+    display = displayByteArrayAccess
+    encoding _ = "hexadecimal"
+instance HasParser BIP39.Seed where
+    getParser = strParser >>= parseByteArray
 instance Display ByteString where
     display = displayByteArrayAccess
     encoding _ = "hexadecimal"

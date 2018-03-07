@@ -44,7 +44,6 @@ module Cardano.Crypto.Encoding.Seed
 
     , -- helpers
       scrambleMnemonic
-    , MnemonicWords
     ) where
 
 import Foundation
@@ -167,12 +166,12 @@ unscramble :: forall entropysizeI entropysizeO mnemonicsize scramblesize csI csO
           -> Passphrase
           -> Entropy entropysizeO
 unscramble e passphrase =
-    let ee = xor otp eraw
+    let ee = xor otp eraw :: ByteString
      in case toEntropy @entropysizeO ee of
          Nothing -> error "unscramble: the function BIP39.toEntropy returned an unexpected error"
          Just e' -> e'
   where
-    (iv, eraw) = B.splitAt ivSizeBytes (entropyRaw e)
+    (iv, eraw) = B.splitAt ivSizeBytes (entropyRaw e) :: (ByteString, ByteString)
     salt = iv <> constant
     otp :: ScrubbedBytes
     otp = PBKDF2.fastPBKDF2_SHA512

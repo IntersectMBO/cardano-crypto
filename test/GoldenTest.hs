@@ -32,16 +32,17 @@ import qualified Data.ByteArray as B
 
 import           Cardano.Crypto.Wallet
 import           Cardano.Crypto.Encoding.Seed
-import           Crypto.Encoding.BIP39
-import qualified Crypto.Encoding.BIP39.English as English
+import           Cardano.Crypto.Encoding.BIP39
+import           Crypto.Encoding.BIP39.English (english)
 import qualified Cardano.Crypto.Praos.VRF as VRF
 
 import Test.Orphans
 
 main :: IO ()
 main = defaultMain $ do
-    goldenPaperwallet
+    goldenBIP39
     goldenHDWallet
+    goldenPaperwallet
     goldenVRF
 
 type GoldenVRF
@@ -130,6 +131,39 @@ goldenHDWallet = group $ do
         deriveWith = foldl' (deriveXPrv ds pw)
 
 -- -------------------------------------------------------------------------- --
+
+type BIP39 n
+    = "crypto" :> "encoding" :> PathParameter "BIP39-" n
+      :> Payload "words" (Mnemonic 'English (MnemonicWords n))
+      :> Payload "passphrase" Passphrase
+      :> ( Payload "entropy" (Entropy n)
+         , Payload "seed" Seed
+         )
+
+goldenBIP39 :: GoldenT ()
+goldenBIP39 = group $ do
+    summary "Test official BIP39"
+
+    golden (Proxy :: Proxy (BIP39 128)) (runTest (Proxy @128))
+    -- golden (Proxy :: Proxy (BIP39 160)) (runTest (Proxy @160))
+    golden (Proxy :: Proxy (BIP39 192)) (runTest (Proxy @192))
+    -- golden (Proxy :: Proxy (BIP39 224)) (runTest (Proxy @224))
+    golden (Proxy :: Proxy (BIP39 256)) (runTest (Proxy @256))
+  where
+    runTest :: forall n csz mw . ConsistentEntropy n mw csz
+            => Proxy n
+            -> Mnemonic 'English mw
+            -> Passphrase
+            -> (Entropy n, Seed)
+    runTest p (Mnemonic mw) pw  =
+        let -- 1. retrieve the entroy
+            entropy = fromMaybe (error "invalid mnemonic phrase")
+                                (wordsToEntropy @n mw)
+            -- 2. retrieve the seed
+            seed = sentenceToSeed @mw mw english pw
+         in (entropy, seed)
+
+-- -------------------------------------------------------------------------- --
 --                          Helpers                                           --
 -- -------------------------------------------------------------------------- --
 
@@ -169,34 +203,29 @@ data Language = English
 newtype Mnemonic (k :: Language) n = Mnemonic (MnemonicSentence n)
   deriving (Eq, Typeable)
 
-instance (KnownNat n, NatWithinBound Int n) => Arbitrary (Mnemonic 'English n) where
-    arbitrary = do
-        r <- LN.replicateM @n (elements $ nonEmpty_ English.words)
-        pure $ Mnemonic $ LN.map (dictionaryWordToIndex englishDict) r
+instance Arbitrary (Mnemonic 'English 12) where
+    arbitrary = Mnemonic . entropyToWords @128 @4 @12 <$> arbitrary
+instance Arbitrary (Mnemonic 'English 15) where
+    arbitrary = Mnemonic . entropyToWords @160 @5 @15 <$> arbitrary
+instance Arbitrary (Mnemonic 'English 18) where
+    arbitrary = Mnemonic . entropyToWords @192 @6 @18 <$> arbitrary
+instance Arbitrary (Mnemonic 'English 21) where
+    arbitrary = Mnemonic . entropyToWords @224 @7 @21 <$> arbitrary
+instance Arbitrary (Mnemonic 'English 24) where
+    arbitrary = Mnemonic . entropyToWords @256 @8 @24 <$> arbitrary
 
-instance (KnownNat n, NatWithinBound Int n) => Display (Mnemonic 'English n) where
-    display (Mnemonic l) = "\"" <> intercalate " " (LN.unListN $ LN.map (dictionaryIndexToWord englishDict) l) <> "\""
+instance ValidMnemonicSentence n => Display (Mnemonic 'English n) where
+    display (Mnemonic l) = "\"" <> mnemonicSentenceToString english l <> "\""
     encoding _ = "UTF8"
     comment _ = Just $ "list of " <> show n <> " BIP39 english words"
       where
         n = natVal @n Proxy
 
-instance (KnownNat n, NatWithinBound Int n) => HasParser (Mnemonic 'English n) where
+instance ValidMnemonicSentence n => HasParser (Mnemonic 'English n) where
     getParser = do
         strs <- words <$> strParser
-        Mnemonic <$> case LN.toListN @n strs of
+        Mnemonic <$> case mnemonicPhrase @n strs of
             Nothing -> reportError $ Expected (show n <> " words") (show (length strs) <> " words")
-            Just l  -> pure $ LN.map (dictionaryWordToIndex englishDict) l
+            Just l  -> pure $ mnemonicPhraseToMnemonicSentence english l
       where
-        n = natVal (Proxy @n)
-
-englishDict :: Dictionary
-englishDict = Dictionary dictLookup dictRevLookup " "
-  where
-    dictLookup :: WordIndex -> String
-    dictLookup x = fromMaybe (error $ "not a valid BIP39 English word: " <> show x)
-                 $ English.words ! fromIntegral (unWordIndex x)
-    dictRevLookup :: String -> WordIndex
-    dictRevLookup x = maybe (error $ "word not in the english dictionary: " <> x)
-                            (wordIndex . fromIntegral)
-                            (x `elemIndex` English.words)
+        n = natVal @n Proxy
