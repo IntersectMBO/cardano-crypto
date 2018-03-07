@@ -3,19 +3,19 @@ TestVector
 input = "legal winner thank year wave sausage worth useful legal winner thank yellow"
 iv = "00000000"
 passphrase = ""
-shielded_input = "picnic leave file debris evolve bring toilet response run inch clean wheel abandon abandon actress"
+shielded_input = "abandon abandon abandon win nest chef want salt join shove minor december miss oak name"
 
 # Test Vector 2
 TestVector
-input = "legal winner thank year wave sausage worth useful legal sausage inch year"
+input = "fold parrot feature figure stay blanket woman grain huge orphan key exile"
 iv = "00010203"
 passphrase = "Cardano Ada"
-shielded_input = "anxiety urge mirror fade parrot hurt junior fabric history screen gravity craft coral above actor"
+shielded_input = "abandon amount liar jump crouch mesh token control someone wheel purity initial choice bullet embark"
 
 # Test Vector 3
 TestVector
 input = "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong"
 iv = "2a2a2a2a"
 passphrase = "This is a very long passphrase. This is a very long passphrase. This is a very long passphrase. This is a very long passphrase."
-shielded_input = "actor dinner buddy room pig face boat net anger quiz planet engage pencil bench prison"
+shielded_input = "clay eyebrow melt enroll lend fold card pledge allow bottom dirt road frame fatal arch"
 

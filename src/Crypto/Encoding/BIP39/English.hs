@@ -1,11 +1,33 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Crypto.Encoding.BIP39.English ( words ) where
+{-# LANGUAGE DataKinds #-}
+module Crypto.Encoding.BIP39.English ( english ) where
 
+import Basement.Imports
 import Basement.String (String)
+import Basement.Sized.Vect
 
-words :: [String]
-words =
+import Data.Maybe (fromMaybe)
+import qualified Data.List
+
+import Crypto.Encoding.BIP39.Dictionary (Dictionary (..), WordIndex, unWordIndex)
+
+english :: Dictionary
+english = Dictionary
+    { dictionaryWordToIndex = fromMaybe undefined . flip Data.List.lookup list
+    , dictionaryTestWord = flip Data.List.elem wordList
+    , dictionaryIndexToWord = index words . unWordIndex
+    , dictionaryWordSeparator = " "
+    }
+
+words :: Vect 2048 String
+words = fromMaybe (error "invalid vector length") $ toVect $ fromList wordList
+
+list :: [(String, WordIndex)]
+list = Data.List.zip wordList [minBound..maxBound]
+
+wordList :: [String]
+wordList =
     [ "abandon"
     , "ability"
     , "able"

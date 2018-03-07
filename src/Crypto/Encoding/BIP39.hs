@@ -9,33 +9,53 @@
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE RecordWildCards      #-}
 {-# LANGUAGE BangPatterns         #-}
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Crypto.Encoding.BIP39
-    ( Entropy
-    , MnemonicSentence
-    , Dictionary(..)
+    ( -- * Entropy
+      Entropy
+    , ValidEntropySize
+    , Checksum
+    , ValidChecksumSize
+    , MnemonicWords
+    , toEntropy
+    , entropyRaw
+    , entropyChecksum
+
+    , entropyToWords
+    , wordsToEntropy
+
+    , -- * Seed
+      Seed
+    , Passphrase
+    , sentenceToSeed
+    , phraseToSeed
+
+    , -- * Mnemonic Sentence
+      MnemonicSentence
+    , MnemonicPhrase
+    , ValidMnemonicSentence
+    , mnemonicPhrase
+    , checkMnemonicPhrase
+    , mnemonicPhraseToMnemonicSentence
+    , mnemonicSentenceToMnemonicPhrase
+    , mnemonicSentenceToString
+    , mnemonicPhraseToString
+    , translateTo
+    , -- ** Dictionary
+      Dictionary(..)
     , WordIndex
     , wordIndex
     , unWordIndex
-    , Seed
-    , Passphrase
-    , entropyRaw
-    , toEntropy
-    , entropyToWords
-    , wordsToEntropy
-    , sentenceToSeed
-    , cardanoSlSeed
 
-    -- * helpers
-    , ConsistentEntropy
+    , -- * helpers
+      ConsistentEntropy
     , CheckSumBits
-    , MnemonicWords
-    , ValidEntropySize
-    -- * Tests
-    , tests
+    , Elem
     ) where
+
+import Prelude ((-), (*), (+), div, divMod, (^), fromIntegral)
 
 import           Basement.String (String)
 import qualified Basement.String as String
@@ -43,79 +63,51 @@ import           Basement.Nat
 import qualified Basement.Sized.List as ListN
 import           Basement.NormalForm
 import           Basement.Compat.Typeable
+import           Basement.Numerical.Number (IsIntegral(..))
+import           Basement.Imports
 
 import           Foundation.Check
 
 import           Control.Monad (replicateM)
 import           Data.Bits
-import           Data.Monoid
-import           Data.Word
 import           Data.Maybe (fromMaybe)
-import           Data.List (intersperse, elemIndex)
-import qualified Data.ByteArray as BA (index, convert)
+import           Data.List (reverse)
+import           Data.ByteArray (ByteArrayAccess, ByteArray)
+import qualified Data.ByteArray as BA
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 
 import           Data.Proxy
-import           Data.Kind (Constraint)
 
-import           GHC.TypeLits
-import           GHC.Exts (IsList(..))
+import           GHC.Exts (IsList(..), IsString)
 
-import           Crypto.Hash (hashWith, SHA256(..), Blake2b_256, Digest)
-import qualified Crypto.Hash as Hash
+import           Crypto.Hash (hashWith, SHA256(..))
 import           Crypto.Number.Serialize (os2ip, i2ospOf_)
 import qualified Crypto.KDF.PBKDF2 as PBKDF2
 
-import           Prelude hiding (String)
+import           Crypto.Encoding.BIP39.Dictionary
 
-import qualified Crypto.Encoding.BIP39.English as English (words)
+-- -------------------------------------------------------------------------- --
+-- Entropy
+-- -------------------------------------------------------------------------- --
 
-------------------------------------------------------------------------
--- Basic Definitions
-------------------------------------------------------------------------
+-- | this is the `Checksum` of a given 'Entropy'
+--
+-- the 'Nat' type parameter represent the size, in bits, of this checksum.
+newtype Checksum (bits :: Nat) = Checksum Word8
+    deriving (Show, Eq, Typeable, NormalForm)
 
-data Dictionary = Dictionary
-    { dictionaryIndexToWord :: WordIndex -> String
-    , dictionaryWordToIndex :: String -> WordIndex
-    , dictionaryWordSeparator :: String
-        -- ^ joining string (e.g. space for english)
-    }
+checksum :: forall csz ba . (KnownNat csz, ByteArrayAccess ba)
+         => ba -> Checksum csz
+checksum bs = Checksum $ (hashWith SHA256 bs `BA.index` 0) `shiftR` (8 - csz)
+  where
+    csz = fromInteger $ natVal (Proxy @csz)
 
-type MnemonicSentence (mw :: Nat) = ListN.ListN mw WordIndex
-
-type Passphrase = String
-
-type Seed = ByteString
-
-newtype WordIndex = WordIndex { unWordIndex :: Word16 } -- 2048 max
-    deriving (Show,Eq)
-
-wordIndex :: Word16 -> WordIndex
-wordIndex w
-    | w > 2047  = error ("internal error: word index should be between 0 to 2047. " ++ show w)
-    | otherwise = WordIndex w
-
-type ValidEntropySize (n :: Nat) = Elem n '[128,160,192,224,256]
-
-type family Elem (e :: Nat) (l :: [Nat]) :: Constraint where
-    Elem e '[] = TypeError ('Text "offset: field "
-             ':<>: 'ShowType e
-             ':<>: 'Text " not elements of valids values")
-    Elem e (e ': _) = ()
-    Elem e (_ ': xs) = Elem e xs
-
-------------------------------------------------------------------------
--- Converting to binary seed
-------------------------------------------------------------------------
-
--- | Number of Words related to a specific entropy size in bits
-type family MnemonicWords (n :: Nat) :: Nat where
-    MnemonicWords 128 = 12
-    MnemonicWords 160 = 15
-    MnemonicWords 192 = 18
-    MnemonicWords 224 = 21
-    MnemonicWords 256 = 24
+type ValidChecksumSize (ent :: Nat) (csz :: Nat) =
+    ( KnownNat csz, NatWithinBound Int csz
+    , Elem csz '[4, 5, 6, 7, 8]
+    , CheckSumBits ent ~ csz
+    )
 
 -- | Number of bits of checksum related to a specific entropy size in bits
 type family CheckSumBits (n :: Nat) :: Nat where
@@ -125,13 +117,17 @@ type family CheckSumBits (n :: Nat) :: Nat where
     CheckSumBits 224 = 7
     CheckSumBits 256 = 8
 
-checksum :: forall csz . KnownNat csz => ByteString -> Checksum csz
-checksum bs = Checksum (hashWith SHA256 bs `BA.index` 0)
-  --where
-  --  csz = natVal (Proxy @csz)
-
-data Entropy (n :: Nat) = Entropy ByteString (Checksum (CheckSumBits n))
-    deriving (Show,Eq,Typeable)
+-- | BIP39's entropy is a byte array of a given size (in bits, see
+-- 'ValidEntropySize' for the valid size).
+--
+-- To it is associated
+data Entropy (n :: Nat) = Entropy
+     { entropyRaw :: !ByteString
+        -- ^ Get the raw binary associated with the entropy
+     , entropyChecksum :: !(Checksum (CheckSumBits n))
+        -- ^ Get the checksum of the Entropy
+     }
+  deriving (Show, Eq, Typeable)
 instance NormalForm (Entropy n) where
     toNormalForm (Entropy !_ cs) = toNormalForm cs
 instance Arbitrary (Entropy 128) where
@@ -145,21 +141,41 @@ instance Arbitrary (Entropy 224) where
 instance Arbitrary (Entropy 256) where
     arbitrary = fromMaybe (error "arbitrary (Entropy 256)") . toEntropy . BS.pack <$> replicateM 32 arbitrary
 
--- | Get the raw binary associated with the entropy
-entropyRaw :: Entropy n -> ByteString
-entropyRaw (Entropy bs _) = bs
-
-newtype Checksum (bits :: Nat) = Checksum Word8
-    deriving (Show,Eq,Typeable,NormalForm)
+-- | Type Constraint Alias to check a given 'Nat' is valid for an entropy size
+--
+-- i.e. it must be one of the following: 128, 160, 192, 224, 256.
+--
+type ValidEntropySize (n :: Nat) =
+    ( KnownNat n, NatWithinBound Int n
+    , Elem n '[128, 160, 192, 224, 256]
+    )
 
 -- | Create a specific entropy type of known size from a raw bytestring
-toEntropy :: forall n csz
-           . (KnownNat n, KnownNat csz, NatWithinBound Int n, ValidEntropySize n, CheckSumBits n ~ csz)
-          => ByteString
+toEntropy :: forall n csz ba
+           . (ValidEntropySize n, ValidChecksumSize n csz, ByteArrayAccess ba)
+          => ba
           -> Maybe (Entropy n)
 toEntropy bs
-    | BS.length bs*8 == natValInt (Proxy @n) = Just $ Entropy bs (checksum @csz bs)
+    | BA.length bs*8 == natValInt (Proxy @n) = Just $ Entropy (BA.convert bs) (checksum @csz bs)
     | otherwise                              = Nothing
+
+toEntropyCheck :: forall n csz ba
+                . (ValidEntropySize n, ValidChecksumSize n csz, ByteArrayAccess ba)
+               => ba
+               -> Checksum csz
+               -> Maybe (Entropy n)
+toEntropyCheck bs s = case toEntropy bs of
+    Nothing -> Nothing
+    Just e@(Entropy _ cs) | cs == s   -> Just e
+                          | otherwise -> Nothing
+
+-- | Number of Words related to a specific entropy size in bits
+type family MnemonicWords (n :: Nat) :: Nat where
+    MnemonicWords 128 = 12
+    MnemonicWords 160 = 15
+    MnemonicWords 192 = 18
+    MnemonicWords 224 = 21
+    MnemonicWords 256 = 24
 
 -- | Type Constraint Alias to check the entropy size, the number of mnemonic
 -- words and the checksum size is consistent. i.e. that the following is true:
@@ -175,63 +191,47 @@ toEntropy bs
 -- This type constraint alias also perform all the GHC's cumbersome type level
 -- literal handling.
 --
-type ConsistentEntropy entropysize mnemonicsize checksumsize =
-    ( KnownNat entropysize, KnownNat mnemonicsize, KnownNat checksumsize
-    , NatWithinBound Int entropysize
-    , NatWithinBound Int mnemonicsize
-    , NatWithinBound Int checksumsize
-    , ValidEntropySize entropysize
-    , MnemonicWords entropysize ~ mnemonicsize
-    , CheckSumBits entropysize ~ checksumsize
+type ConsistentEntropy ent mw csz =
+    ( ValidEntropySize ent
+    , ValidChecksumSize ent csz
+    , ValidMnemonicSentence mw
+    , MnemonicWords ent ~ mw
     )
 
-wordsToEntropy :: forall entropysize checksumsize numbermnemonicword
-                . ConsistentEntropy entropysize numbermnemonicword checksumsize
-               => MnemonicSentence numbermnemonicword
-               -> Maybe (Entropy entropysize)
-wordsToEntropy ms =
+-- | retrieve the initial entropy from a given 'MnemonicSentence'
+--
+-- This function validate the retrieved 'Entropy' is valid, i.e. that the
+-- checksum is correct.
+-- This means you should not create a new 'Entropy' from a 'MnemonicSentence',
+-- instead, you should use a Random Number Generator to create a new 'Entropy'.
+--
+wordsToEntropy :: forall ent csz mw
+                . ConsistentEntropy ent mw csz
+               => MnemonicSentence mw
+               -> Maybe (Entropy ent)
+wordsToEntropy (MnemonicSentence ms) =
     let -- we don't revese the list here, we know that the first word index
         -- is the highest first 11 bits of the entropy.
-        entropy         = ListN.foldl' (\acc x -> acc `shiftL` 11 + fromIntegral (unWordIndex x)) 0 ms
-        initialEntropy = i2ospOf_ nb (entropy `shiftR` fromIntegral checksumsize)
-        -- initialEntropy = BS.take nb entropy
-        -- cs = BS.drop nb entropy
-        e = toEntropy initialEntropy
-     in e
+        entropy         = ListN.foldl' (\acc x -> acc `shiftL` 11 + toInteger (unWordIndex x)) 0 ms
+        initialEntropy :: ByteString
+        initialEntropy = i2ospOf_ nb (entropy `shiftR` fromInteger checksumsize)
+        cs = Checksum $ fromInteger (entropy .&. mask)
+     in toEntropyCheck initialEntropy cs
   where
-    checksumsize = natVal (Proxy @checksumsize)
-    entropysize  = natVal (Proxy @entropysize)
-    -- number of bytes in the initial entropy
+    checksumsize = natVal (Proxy @csz)
+    entropysize  = natVal (Proxy @ent)
     nb  = fromInteger entropysize `div` 8
-    -- number of word in the mnemonic sentence
-    -- mw  = natVal (Proxy @mw)
-
--- | this is not a BIP39 function but is the function used in cardano-sl
--- to generate a seed from a mnemonic phrase.
---
--- https://github.com/input-output-hk/cardano-sl/blob/f5b8073b92b8219ae5fbb038c0ceb4a19502a86b/wallet/src/Pos/Util/BackupPhrase.hs#L59-L65
--- https://github.com/input-output-hk/cardano-sl/blob/429efc2426c63802ae86789f5b828dcbb42de88a/wallet/src/Pos/Util/Mnemonics.hs#L66-L87
---
-cardanoSlSeed :: forall n csz mw . ConsistentEntropy n mw csz
-              => Proxy n
-              -> MnemonicSentence mw
-              -> Seed
-cardanoSlSeed _ mw =
-    let e = wordsToEntropy @n @csz @mw mw
-     in case e of
-         Nothing -> error ""
-         Just (Entropy b _) -> BA.convert $ blake2b b
-  where blake2b :: ByteString -> Digest Blake2b_256
-        blake2b = Hash.hash
+    mask = 2 ^ checksumsize - 1
 
 -- | Given an entropy of size n, Create a list
+--
 entropyToWords :: forall n csz mw . ConsistentEntropy n mw csz
                => Entropy n
                -> MnemonicSentence mw
 entropyToWords (Entropy bs (Checksum w)) =
-    maybe (error "toListN_") id $ ListN.toListN $ reverse $ loop mw g
+    fromList $ reverse $ loop mw g
   where
-    g = (os2ip (BS.reverse bs) `shiftL` fromIntegral csz) .|. (fromIntegral w `shiftR` (8 - fromIntegral csz))
+    g = (os2ip bs `shiftL` fromIntegral csz) .|. fromIntegral w
     csz = natVal (Proxy @csz)
     mw  = natVal (Proxy @mw)
     loop nbWords acc
@@ -240,90 +240,39 @@ entropyToWords (Entropy bs (Checksum w)) =
             let (acc', d) = acc `divMod` 2048
              in wordIndex (fromIntegral d) : loop (nbWords - 1) acc'
 
--- | Create a seed from mmemonic sentence and passphrase using the BIP39 algorithm
-sentenceToSeed :: MnemonicSentence mw -- ^ Mmenomic sentence of mw words
-               -> Dictionary          -- ^ Dictionary of words/indexes
-               -> Passphrase          -- ^ Binary Passphrase used to generate
+-- -------------------------------------------------------------------------- --
+-- Seed
+-- -------------------------------------------------------------------------- --
+
+newtype Seed = Seed ByteString
+  deriving (Show, Eq, Ord, Typeable, Semigroup, Monoid, ByteArrayAccess, ByteArray, IsString)
+instance Arbitrary Seed where
+    arbitrary = undefined -- TODO
+
+type Passphrase = String
+
+-- | Create a seed from 'MmemonicSentence' and 'Passphrase' using the BIP39
+-- algorithm.
+sentenceToSeed :: ValidMnemonicSentence mw
+               => MnemonicSentence mw -- ^ 'MmenomicPhrase' of mw words
+               -> Dictionary          -- ^  Dictionary' of words/indexes
+               -> Passphrase          -- ^ 'Passphrase' used to generate
                -> Seed
-sentenceToSeed mw Dictionary{..} passphrase =
+sentenceToSeed mw dic =
+    phraseToSeed (mnemonicSentenceToMnemonicPhrase dic mw) dic
+
+-- | Create a seed from 'MmemonicPhrase' and 'Passphrase' using the BIP39
+-- algorithm.
+phraseToSeed :: ValidMnemonicSentence mw
+             => MnemonicPhrase mw -- ^ 'MmenomicPhrase' of mw words
+             -> Dictionary        -- ^  Dictionary' of words/indexes
+             -> Passphrase        -- ^ 'Passphrase' used to generate
+             -> Seed
+phraseToSeed mw dic passphrase =
     PBKDF2.fastPBKDF2_SHA512
                     (PBKDF2.Parameters 2048 64)
                     sentence
                     (toData ("mnemonic" `mappend` passphrase))
   where
-    sentence = toData $ mconcat $ intersperse dictionaryWordSeparator $ map dictionaryIndexToWord $ ListN.unListN mw
+    sentence = toData $ mnemonicPhraseToString dic mw
     toData = String.toBytes String.UTF8
-
-tests :: Test
-tests = Group "BIP39" $ map runTest testVectors
-
-data TestVector = TestVector
-    { testVectorInput  :: ByteString
-    , testVectorWords  :: ByteString
-    , testVectorWIndex :: [Word16]
-    , testVectorSeed   :: ByteString
-    , testVectorXprv   :: ByteString
-    }
-
-runTest :: TestVector -> Test
-runTest tv =
-    case BS.length (testVectorInput tv) * 8 of
-        128 -> go (Proxy @128)
-        160 -> go (Proxy @160)
-        192 -> go (Proxy @192)
-        224 -> go (Proxy @224)
-        256 -> go (Proxy @256)
-        _   -> error "invalid size"
-  where
-    testVectorWIndex' = map wordIndex . testVectorWIndex
-
-    go :: forall n csz mw . ConsistentEntropy n mw csz
-       => Proxy n -> Test
-    go proxyN = CheckPlan ("test " <> fromList (show $ natVal proxyN)) $ do
-        case toEntropy @n (testVectorInput tv) of
-            Nothing -> error "entropy generation error"
-            Just e -> do
-                let w = entropyToWords e
-                    e' = wordsToEntropy @n w
-                    dictLookup (WordIndex x) = English.words !! fromIntegral x
-                    dictRevLookup x = maybe (error $ "word not in the english dictionary: " <> toList x) (wordIndex . fromIntegral) $ x `elemIndex` English.words
-                    seed = sentenceToSeed w (Dictionary dictLookup dictRevLookup " ") "TREZOR"
-                validate "words equal" (ListN.unListN w === testVectorWIndex' tv)
-                validate "seed equal" (seed === testVectorSeed tv)
-                validate "entropy equal" (Just e === e')
-
-testVectors :: [TestVector]
-testVectors =
-    [ TestVector
-        "\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f"
-        "legal winner thank year wave sausage worth useful legal winner thank yellow"
-        [1019,2015,1790,2039,1983,1533,2031,1919,1019,2015,1790,2040]
-        "\x2e\x89\x05\x81\x9b\x87\x23\xfe\x2c\x1d\x16\x18\x60\xe5\xee\x18\x30\x31\x8d\xbf\x49\xa8\x3b\xd4\x51\xcf\xb8\x44\x0c\x28\xbd\x6f\xa4\x57\xfe\x12\x96\x10\x65\x59\xa3\xc8\x09\x37\xa1\xc1\x06\x9b\xe3\xa3\xa5\xbd\x38\x1e\xe6\x26\x0e\x8d\x97\x39\xfc\xe1\xf6\x07"
-        "xprv9s21ZrQH143K2gA81bYFHqU68xz1cX2APaSq5tt6MFSLeXnCKV1RVUJt9FWNTbrrryem4ZckN8k4Ls1H6nwdvDTvnV7zEXs2HgPezuVccsq"
-    , TestVector
-        "\x80\x80\x80\x80\x80\x80\x80\x80\x80\x80\x80\x80\x80\x80\x80\x80"
-        "letter advice cage absurd amount doctor acoustic avoid letter advice cage above"
-        [1028,32,257,8,64,514,16,128,1028,32,257,4]
-        "\xd7\x1d\xe8\x56\xf8\x1a\x8a\xcc\x65\xe6\xfc\x85\x1a\x38\xd4\xd7\xec\x21\x6f\xd0\x79\x6d\x0a\x68\x27\xa3\xad\x6e\xd5\x51\x1a\x30\xfa\x28\x0f\x12\xeb\x2e\x47\xed\x2a\xc0\x3b\x5c\x46\x2a\x03\x58\xd1\x8d\x69\xfe\x4f\x98\x5e\xc8\x17\x78\xc1\xb3\x70\xb6\x52\xa8"
-        "xprv9s21ZrQH143K2shfP28KM3nr5Ap1SXjz8gc2rAqqMEynmjt6o1qboCDpxckqXavCwdnYds6yBHZGKHv7ef2eTXy461PXUjBFQg6PrwY4Gzq"
-    , TestVector
-        "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"
-        "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong"
-        [2047,2047,2047,2047,2047,2047,2047,2047,2047,2047,2047,2037]
-        "\xac\x27\x49\x54\x80\x22\x52\x22\x07\x9d\x7b\xe1\x81\x58\x37\x51\xe8\x6f\x57\x10\x27\xb0\x49\x7b\x5b\x5d\x11\x21\x8e\x0a\x8a\x13\x33\x25\x72\x91\x7f\x0f\x8e\x5a\x58\x96\x20\xc6\xf1\x5b\x11\xc6\x1d\xee\x32\x76\x51\xa1\x4c\x34\xe1\x82\x31\x05\x2e\x48\xc0\x69"
-        "xprv9s21ZrQH143K2V4oox4M8Zmhi2Fjx5XK4Lf7GKRvPSgydU3mjZuKGCTg7UPiBUD7ydVPvSLtg9hjp7MQTYsW67rZHAXeccqYqrsx8LcXnyd"
-    , TestVector
-        "\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f"
-        "legal winner thank year wave sausage worth useful legal winner thank year wave sausage worth useful legal will"
-        [1019,2015,1790,2039,1983,1533,2031,1919,1019,2015,1790,2039,1983,1533,2031,1919,1019,2009]
-        "\xf2\xb9\x45\x08\x73\x2b\xcb\xac\xbc\xc0\x20\xfa\xef\xec\xfc\x89\xfe\xaf\xa6\x64\x9a\x54\x91\xb8\xc9\x52\xce\xde\x49\x6c\x21\x4a\x0c\x7b\x3c\x39\x2d\x16\x87\x48\xf2\xd4\xa6\x12\xba\xda\x07\x53\xb5\x2a\x1c\x7a\xc5\x3c\x1e\x93\xab\xd5\xc6\x32\x0b\x9e\x95\xdd"
-        "xprv9s21ZrQH143K3Lv9MZLj16np5GzLe7tDKQfVusBni7toqJGcnKRtHSxUwbKUyUWiwpK55g1DUSsw76TF1T93VT4gz4wt5RM23pkaQLnvBh7"
-{-
-    , TestVector
-        "\xf5\x85\xc1\x1a\xec\x52\x0d\xb5\x7d\xd3\x53\xc6\x95\x54\xb2\x1a\x89\xb2\x0f\xb0\x65\x09\x66\xfa\x0a\x9d\x6f\x74\xfd\x98\x9d\x8f"
-        "void come effort suffer camp survey warrior heavy shoot primary clutch crush open amazing screen patrol group space point ten exist slush involve unfold"
-        [1964,368,565,1733,262,1749,1978,851,1588,1365,356,424,1241,62,1548,1289,823,1666,1338,1783,638,1634,945,1897]
-        "\x01\xf5\xbc\xed\x59\xde\xc4\x8e\x36\x2f\x2c\x45\xb5\xde\x68\xb9\xfd\x6c\x92\xc6\x63\x4f\x44\xd6\xd4\x0a\xab\x69\x05\x65\x06\xf0\xe3\x55\x24\xa5\x18\x03\x4d\xdc\x11\x92\xe1\xda\xcd\x32\xc1\xed\x3e\xaa\x3c\x3b\x13\x1c\x88\xed\x8e\x7e\x54\xc4\x9a\x5d\x09\x98"
-        "xprv9s21ZrQH143K39rnQJknpH1WEPFJrzmAqqasiDcVrNuk926oizzJDDQkdiTvNPr2FYDYzWgiMiC63YmfPAa2oPyNB23r2g7d1yiK6WpqaQS"
--}
-    ]
