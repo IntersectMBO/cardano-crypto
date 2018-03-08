@@ -19,13 +19,13 @@ import Foundation.Check
 import qualified Foundation.Parser as Parser
 import Foundation.Collection ((!), nonEmpty_)
 import Foundation.String
+import Foundation.String.Builder (emit)
 import Foundation.String.Read (readIntegral)
+import Basement.Block (Block)
 
 import Data.List (elemIndex)
 
 import Inspector
-import Inspector.Display
-import Inspector.Parser
 
 import Data.ByteArray (Bytes, convert)
 import qualified Data.ByteArray as B
@@ -172,23 +172,24 @@ newtype ChainCodePath = Root [Word32]
   deriving (Show, Eq, Typeable)
 instance Arbitrary ChainCodePath where
     arbitrary = Root <$> arbitrary
-instance Display ChainCodePath where
-    encoding _ = "m[([0-9]+|[0-9]+')]*"
-    display (Root l) = "\"" <> intercalate "/" ((:) "m" $ f <$> l) <> "\""
+instance Inspectable ChainCodePath where
+    documentation _ = "derivation code: `m[([0-9]+|[0-9]+')]*`"
+    exportType _ Rust = exportType (Proxy @[Word32]) Rust
+    exportType _ t    = exportType (Proxy @String) t
+    display Rust (Root l) = display Rust l
+    display t (Root l) = display t (intercalate "/" ((:) "m" $ f <$> l))
       where
         f :: Word32 -> String
         f w
           | w >= 0x80000000 = show (w - 0x80000000) <> "'"
           | otherwise       = show w
-
-instance HasParser ChainCodePath where
-    getParser = do
+    parser _ = do
         Parser.elements "\"m"
         l <- Parser.many $ do
                 Parser.element '/'
                 r <- Parser.takeWhile (`elem` ['0'..'9'])
                 mh <- Parser.optional $ Parser.element '\''
-                r' <- maybe (reportError $ Expected "Integer" r) pure $ readIntegral r
+                r' <- maybe (Parser.reportError $ Parser.Expected "Word32" r) pure $ readIntegral r
                 pure $ case mh of
                     Nothing -> r'
                     Just () -> r' + 0x80000000
@@ -214,18 +215,72 @@ instance Arbitrary (Mnemonic 'English 21) where
 instance Arbitrary (Mnemonic 'English 24) where
     arbitrary = Mnemonic . entropyToWords @256 @8 @24 <$> arbitrary
 
-instance ValidMnemonicSentence n => Display (Mnemonic 'English n) where
-    display (Mnemonic l) = "\"" <> mnemonicSentenceToString english l <> "\""
-    encoding _ = "UTF8"
-    comment _ = Just $ "list of " <> show n <> " BIP39 english words"
-      where
-        n = natVal @n Proxy
-
-instance ValidMnemonicSentence n => HasParser (Mnemonic 'English n) where
-    getParser = do
-        strs <- words <$> strParser
-        Mnemonic <$> case mnemonicPhrase @n strs of
-            Nothing -> reportError $ Expected (show n <> " words") (show (length strs) <> " words")
+instance Inspectable (Mnemonic 'English 12) where
+    display Rust (Mnemonic l) = display Rust (maybe undefined entropyRaw $ wordsToEntropy @128 @4 @12 l)
+    display t (Mnemonic l) = display t (mnemonicSentenceToString english l)
+    documentation _ = "UTF8 BIP39 passphrase (english)"
+    exportType _ Rust = emit "[u8;16]"
+    exportType _ t = exportType (Proxy @String) t
+    parser _ = do
+        strs <- words <$> parser Proxy
+        Mnemonic <$> case mnemonicPhrase @12 strs of
+            Nothing -> Parser.reportError $ Parser.Expected (show n <> " words") (show (length strs) <> " words")
             Just l  -> pure $ mnemonicPhraseToMnemonicSentence english l
       where
-        n = natVal @n Proxy
+        n = natVal @12 Proxy
+
+instance Inspectable (Mnemonic 'English 15) where
+    display Rust (Mnemonic l) = display Rust (maybe undefined entropyRaw $ wordsToEntropy @160 @5 @15 l)
+    display t (Mnemonic l) = display t (mnemonicSentenceToString english l)
+    documentation _ = "UTF8 BIP39 passphrase (english)"
+    exportType _ Rust = emit "[u8;20]"
+    exportType _ t = exportType (Proxy @String) t
+    parser _ = do
+        strs <- words <$> parser Proxy
+        Mnemonic <$> case mnemonicPhrase @15 strs of
+            Nothing -> Parser.reportError $ Parser.Expected (show n <> " words") (show (length strs) <> " words")
+            Just l  -> pure $ mnemonicPhraseToMnemonicSentence english l
+      where
+        n = natVal @15 Proxy
+
+instance Inspectable (Mnemonic 'English 18) where
+    display Rust (Mnemonic l) = display Rust (maybe undefined entropyRaw $ wordsToEntropy @192 @6 @18 l)
+    display t (Mnemonic l) = display t (mnemonicSentenceToString english l)
+    documentation _ = "UTF8 BIP39 passphrase (english)"
+    exportType _ Rust = emit "[u8;24]"
+    exportType _ t = exportType (Proxy @String) t
+    parser _ = do
+        strs <- words <$> parser Proxy
+        Mnemonic <$> case mnemonicPhrase @18 strs of
+            Nothing -> Parser.reportError $ Parser.Expected (show n <> " words") (show (length strs) <> " words")
+            Just l  -> pure $ mnemonicPhraseToMnemonicSentence english l
+      where
+        n = natVal @18 Proxy
+
+instance Inspectable (Mnemonic 'English 21) where
+    display Rust (Mnemonic l) = display Rust (maybe undefined entropyRaw $ wordsToEntropy @224 @7 @21 l)
+    display t (Mnemonic l) = display t (mnemonicSentenceToString english l)
+    documentation _ = "UTF8 BIP39 passphrase (english)"
+    exportType _ Rust = emit "[u8;28]"
+    exportType _ t = exportType (Proxy @String) t
+    parser _ = do
+        strs <- words <$> parser Proxy
+        Mnemonic <$> case mnemonicPhrase @21 strs of
+            Nothing -> Parser.reportError $ Parser.Expected (show n <> " words") (show (length strs) <> " words")
+            Just l  -> pure $ mnemonicPhraseToMnemonicSentence english l
+      where
+        n = natVal @21 Proxy
+
+instance Inspectable (Mnemonic 'English 24) where
+    display Rust (Mnemonic l) = display Rust (maybe undefined entropyRaw $ wordsToEntropy @256 @8 @24 l)
+    display t (Mnemonic l) = display t (mnemonicSentenceToString english l)
+    documentation _ = "UTF8 BIP39 passphrase (english)"
+    exportType _ Rust = emit "[u8;32]"
+    exportType _ t = exportType (Proxy @String) t
+    parser _ = do
+        strs <- words <$> parser Proxy
+        Mnemonic <$> case mnemonicPhrase @24 strs of
+            Nothing -> Parser.reportError $ Parser.Expected (show n <> " words") (show (length strs) <> " words")
+            Just l  -> pure $ mnemonicPhraseToMnemonicSentence english l
+      where
+        n = natVal @24 Proxy
