@@ -2,21 +2,24 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Test.Orphans
     (
     ) where
 
 import Foundation
-import Foundation.Parser (elements)
+import Foundation.Parser (elements, ParseError(..), reportError, takeAll)
 import Basement.Nat
+import Basement.String.Builder (emit, emitChar)
 
-import Inspector.Display
-import Inspector.Parser
+import Basement.Block (Block)
+
+import Inspector
 
 import Crypto.Error
 
-import Data.ByteArray (Bytes)
+import Data.ByteArray (Bytes, convert)
 import Data.ByteString (ByteString)
 
 import qualified Cardano.Crypto.Encoding.Seed as Seed
@@ -27,123 +30,123 @@ import qualified Crypto.DLEQ as DLEQ
 import qualified Cardano.Crypto.Praos.VRF as VRF
 import qualified Crypto.Encoding.BIP39 as BIP39
 
-instance Display Seed.ScrambleIV where
-    display = displayByteArrayAccess
-    encoding _ = "hexadecimal"
-    comment _ = Just "valid value are only 4 bytes long (8 hexadecimal characters)"
-instance HasParser Seed.ScrambleIV where
-    getParser = do
-        bs <- strParser >>= parseByteArray
+instance Inspectable Seed.ScrambleIV where
+    parser _ = do
+        bs <- parser Proxy
         case Seed.mkScrambleIV bs of
             CryptoFailed err -> reportError (Expected "ScrambleIV" (show err))
             CryptoPassed r   -> pure r
+    documentation _ = "hexadecimal encoded bytes"
+    exportType _ Rust = emit "[u8;4]"
+    exportType _ t    = exportType (Proxy @(Block Word8)) t
+    display t = display t . (convert :: Seed.ScrambleIV -> Block Word8)
 
-instance HasParser P256.Scalar where
-    getParser = P256.Scalar <$> getParser
-instance Display P256.Scalar where
-    encoding _ = encoding (Proxy @Integer)
-    display = display . P256.unScalar
+instance Inspectable P256.Scalar where
+    parser _ = P256.Scalar <$> parser Proxy
+    documentation _ = documentation (Proxy @Integer)
+    exportType _ = exportType (Proxy @Integer)
+    display t = display t . P256.unScalar
 
-instance Display Wallet.DerivationScheme where
-    encoding _ = "string \"derivation-scheme1\""
-    display Wallet.DerivationScheme1 = "\"derivation-scheme1\""
-    display Wallet.DerivationScheme2 = "\"derivation-scheme2\""
-    comment _ = Just "valid values are: \"derivation-scheme1\" or \"derivation-scheme2\""
-instance HasParser Wallet.DerivationScheme where
-    getParser = do
-        str <- strParser
-        case str of
-            "derivation-scheme1" -> pure Wallet.DerivationScheme1
-            "derivation-scheme2" -> pure Wallet.DerivationScheme2
-            s                    -> reportError (Expected "derivation-scheme1 or derivation-scheme2" s)
+instance Inspectable Wallet.DerivationScheme where
+    documentation _ = "DerivationScheme: either 'derivation-scheme1' or 'derivation-scheme2'"
+    exportType _ =  exportType (Proxy @String)
+    parser _ = (elements "\"derivation-scheme1\"" >> pure Wallet.DerivationScheme1)
+           <|> (elements "\"derivation-scheme2\"" >> pure Wallet.DerivationScheme2)
+           <|> (takeAll >>= reportError . Expected "'derivation-scheme1' or 'derivation-scheme2'")
+    display _ Wallet.DerivationScheme1 = emit "\"derivation-scheme1\""
+    display _ Wallet.DerivationScheme2 = emit "\"derivation-scheme2\""
 
-instance Display Wallet.XPub where
-    display = displayByteArrayAccess . Wallet.unXPub
-    encoding _ = "hexadecimal"
-    comment _ = Just "extended public key"
-instance HasParser Wallet.XPub where
-    getParser = strParser >>= parseByteArray >>= \s -> case Wallet.xpub s of
-        Left err -> reportError $ Expected "xPub" (fromList err)
-        Right e  -> pure e
+instance Inspectable Wallet.XPub where
+    parser _ = do
+        b <- parser Proxy
+        case Wallet.xpub b of
+            Left err -> reportError $ Expected "XPub" (fromList err)
+            Right e  -> pure e
+    documentation _ = "hexadecimal encoded bytes"
+    exportType _ = exportType (Proxy @(Block Word8))
+    display t = display t . Wallet.unXPub
 
-instance Display Wallet.XPrv where
-    display = displayByteArrayAccess
-    encoding _ = "hexadecimal"
-    comment _ = Just "encrypted extended private key"
-instance HasParser Wallet.XPrv where
-    getParser = strParser >>= parseByteArray >>= \s -> case Wallet.xprv (s :: Bytes) of
-        Left err -> reportError $ Expected "xPrv" (fromList err)
-        Right e  -> pure e
+instance Inspectable Wallet.XPrv where
+    parser _ = do
+        b <- parser Proxy
+        case Wallet.xprv (b :: Bytes) of
+            Left err -> reportError $ Expected "XPrv" (fromList err)
+            Right e  -> pure e
+    documentation _ = "hexadecimal encoded bytes"
+    exportType _ = exportType (Proxy @(Block Word8))
+    display t = display t . (convert :: Wallet.XPrv -> Block Word8)
 
-instance Display Wallet.XSignature where
-    display = displayByteArrayAccess
-    encoding _ = "hexadecimal"
-    comment _ = Just "extended signature"
-instance HasParser Wallet.XSignature where
-    getParser = strParser >>= parseByteArray >>= \s -> case Wallet.xsignature s of
-        Left err -> reportError $ Expected "XSignature" (fromList err)
-        Right e  -> pure e
+instance Inspectable Wallet.XSignature where
+    parser _ = do
+        b <- parser Proxy
+        case Wallet.xsignature b of
+            Left err -> reportError $ Expected "XSignature" (fromList err)
+            Right e  -> pure e
+    documentation _ = "hexadecimal encoded bytes"
+    exportType _ = exportType (Proxy @(Block Word8))
+    display t = display t . (convert :: Wallet.XSignature -> Block Word8)
 
-instance HasParser DLEQ.Challenge where
-    getParser = DLEQ.Challenge <$> getParser
-instance Display DLEQ.Challenge where
-    encoding _ = "hex"
-    display (DLEQ.Challenge c) = display c
+instance Inspectable DLEQ.Challenge where
+    documentation _ = "hexadecimal encoded bytes"
+    display t (DLEQ.Challenge c) = display t c
+    exportType _ = exportType (Proxy @(Block Word8))
+    parser _ = DLEQ.Challenge <$> parser Proxy
 
-instance HasParser DLEQ.Proof where
-    getParser = do
+instance Inspectable DLEQ.Proof where
+    documentation _ = "tuple of a challenge key and a `z`"
+    exportType _ t = emitChar '(' <> exportType (Proxy @DLEQ.Challenge) t <> emit ", " <> exportType (Proxy @P256.Scalar) t <> emitChar ')'
+    display Rust (DLEQ.Proof u dleq) = emit "(" <> display Rust u <> emit ", " <> display Rust dleq <> emit ")"
+    display t    (DLEQ.Proof u dleq) = emit "challenge: " <> display t u <> emit ", z: " <> display t dleq
+    parser _ = do
         elements "challenge: "
-        c <- getParser
+        c <- parser Proxy
         elements ", z: "
-        DLEQ.Proof c <$> getParser
-instance Display DLEQ.Proof where
-    encoding _ = "challenge: " <> encoding (Proxy @DLEQ.Challenge) <> ", z: " <> encoding (Proxy @P256.Scalar)
-    display (DLEQ.Proof c z) = "challenge: " <> display c <> ", z: " <> display z
+        DLEQ.Proof c <$> parser Proxy
 
-instance HasParser VRF.SecretKey where
-    getParser = c <$> getParser
-      where
-        c :: Bytes -> VRF.SecretKey
-        c = VRF.secretKeyFromBytes
-instance Display VRF.SecretKey where
-    encoding _ = "hex"
-    display = display . (VRF.secretKeyToBytes :: VRF.SecretKey -> Bytes)
+instance Inspectable VRF.SecretKey where
+    documentation _ = "hexadecimal encoded bytes"
+    exportType _ = exportType (Proxy @(Block Word8))
+    display t = display t . (VRF.secretKeyToBytes :: VRF.SecretKey -> Block Word8)
+    parser _ = VRF.secretKeyFromBytes <$> parser (Proxy @(Block Word8))
 
-instance HasParser VRF.PublicKey where
-    getParser = c <$> getParser
-      where
-        c :: Bytes -> VRF.PublicKey
-        c = either (error . fromList) id . VRF.publicKeyFromBytes
-instance Display VRF.PublicKey where
-    display = display . (VRF.publicKeyToBytes :: VRF.PublicKey -> Bytes)
-    encoding _ = "hex"
+instance Inspectable VRF.PublicKey where
+    documentation _ = "hexadecimal encoded bytes"
+    exportType _ = exportType (Proxy @(Block Word8))
+    display t = display t . (VRF.publicKeyToBytes :: VRF.PublicKey -> Block Word8)
+    parser _ = do
+        b <- parser (Proxy @(Block Word8))
+        case VRF.publicKeyFromBytes (b :: Block Word8) of
+            Left err -> reportError $ Expected "VRF.PublicKey" (fromList err)
+            Right v -> pure v
 
-instance HasParser VRF.Proof where
-    getParser = do
+instance Inspectable VRF.Proof where
+    documentation _ = "tuple of a public key and a DLEQ Proof"
+    exportType _ Rust = emitChar '(' <> exportType (Proxy @VRF.PublicKey) Rust <> emit ", " <> exportType (Proxy @DLEQ.Proof) Rust <> emitChar ')'
+    exportType _ t    = exportType (Proxy @(Block Word8)) t
+    parser _ = do
         elements "u: "
-        u <- getParser
+        u <- parser Proxy
         elements ", "
-        VRF.Proof u <$> getParser
-instance Display VRF.Proof where
-    encoding _ = "u: `Public Key`, " <> encoding (Proxy :: Proxy DLEQ.Proof)
-    display (VRF.Proof u dleq) = "u: " <> display u <> ", " <> display dleq
+        VRF.Proof u <$> parser Proxy
+    display Rust (VRF.Proof u dleq) = emit "(" <> display Rust u <> emit ", " <> display Rust dleq <> emit ")"
+    display t    (VRF.Proof u dleq) = emit "u: " <> display t    u <> emit ", " <> display t dleq
 
-instance Display (BIP39.Entropy n) where
-    display = displayByteArrayAccess . BIP39.entropyRaw
-    encoding _ = "hexadecimal"
-instance (BIP39.ValidEntropySize n, BIP39.ValidChecksumSize n csz) => HasParser (BIP39.Entropy n) where
-    getParser = do
-        bs <- strParser >>= parseByteArray
-        case BIP39.toEntropy (bs :: Bytes) of
-            Nothing -> reportError (Expected "Entropy" "not the correct size")
+instance (BIP39.ValidEntropySize n, BIP39.ValidChecksumSize n csz) => Inspectable (BIP39.Entropy n) where
+    documentation _ = "hexadecimal encoded bytes"
+    display t = display t . BIP39.entropyRaw
+    exportType _ = exportType (Proxy @(Block Word8))
+    parser _ = do
+        bs <- parser (Proxy @(Block Word8))
+        case BIP39.toEntropy  @n bs of
+            Nothing -> reportError (Expected "Entropy" "not the correct size, or invalid checksum")
             Just r  -> pure r
-instance Display BIP39.Seed where
-    display = displayByteArrayAccess
-    encoding _ = "hexadecimal"
-instance HasParser BIP39.Seed where
-    getParser = strParser >>= parseByteArray
-instance Display ByteString where
-    display = displayByteArrayAccess
-    encoding _ = "hexadecimal"
-instance HasParser ByteString where
-    getParser = strParser >>= parseByteArray
+instance Inspectable BIP39.Seed where
+    documentation _ = "hexadecimal encoded bytes"
+    exportType _ = exportType (Proxy @(Block Word8))
+    parser _ = convert <$> parser (Proxy @(Block Word8))
+    display t = display t . (convert :: BIP39.Seed -> Block Word8)
+instance Inspectable ByteString where
+    documentation _ = "hexadecimal encoded bytes"
+    exportType _ = exportType (Proxy @(Block Word8))
+    parser _ = convert <$> parser (Proxy @(Block Word8))
+    display t = display t . (convert :: ByteString -> Block Word8)
