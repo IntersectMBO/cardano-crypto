@@ -1,7 +1,7 @@
 # compiler supported and their equivalent LTS
 compiler: ghc-8.0 lts-9.21
-compiler: ghc-8.2 lts-10.4
-compiler: ghc-8.2-exe lts-10.4
+compiler: ghc-8.2 lts-10.6
+compiler: ghc-8.2-exe lts-10.6
 compiler: ghc-8.4 ghc-8.4-rc1
 
 option: exe flag=cardano-crypto:golden-tests
