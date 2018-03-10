@@ -26,6 +26,7 @@
 module Cardano.Crypto.Wallet
     ( ChainCode(..)
     , DerivationScheme(..)
+    , DerivationIndex
     , pattern LatestScheme
     -- * Extended Private & Public types
     , XPrv

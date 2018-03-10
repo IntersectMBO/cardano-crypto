@@ -24,7 +24,7 @@ import qualified Data.ByteArray   as B
 import           Data.ByteString  (ByteString)
 import           System.IO.Unsafe
 
-import           Cardano.Crypto.Wallet.Types (DerivationScheme(..))
+import           Cardano.Crypto.Wallet.Types (DerivationScheme(..), DerivationIndex)
 
 totalKeySize :: Int
 totalKeySize = encryptedKeySize + publicKeySize + ccSize
@@ -125,7 +125,7 @@ encryptedDerivePrivate :: (ByteArrayAccess passphrase)
                        => DerivationScheme
                        -> EncryptedKey
                        -> passphrase
-                       -> Word32
+                       -> DerivationIndex
                        -> EncryptedKey
 encryptedDerivePrivate dscheme (EncryptedKey parent) pass childIndex =
     EncryptedKey $ B.allocAndFreeze totalKeySize $ \ekey ->
@@ -135,7 +135,7 @@ encryptedDerivePrivate dscheme (EncryptedKey parent) pass childIndex =
 
 encryptedDerivePublic :: DerivationScheme
                       -> (PublicKey, ChainCode)
-                      -> Word32
+                      -> DerivationIndex
                       -> (PublicKey, ChainCode)
 encryptedDerivePublic dscheme (pub, cc) childIndex
     | childIndex >= 0x80000000 = error "cannot derive hardened in derive public"
@@ -185,7 +185,7 @@ foreign import ccall "wallet_encrypted_sign"
 foreign import ccall "wallet_encrypted_derive_private"
     wallet_encrypted_derive_private :: Ptr EncryptedKey
                                     -> Ptr PassPhrase -> Word32
-                                    -> Word32 -- index
+                                    -> DerivationIndex -- index
                                     -> Ptr EncryptedKey
                                     -> CDerivationScheme
                                     -> IO ()
@@ -193,7 +193,7 @@ foreign import ccall "wallet_encrypted_derive_private"
 foreign import ccall "wallet_encrypted_derive_public"
     wallet_encrypted_derive_public :: Ptr PublicKey
                                    -> Ptr ChainCode
-                                   -> Word32
+                                   -> DerivationIndex
                                    -> Ptr PublicKey
                                    -> Ptr ChainCode
                                    -> CDerivationScheme
