@@ -2,6 +2,7 @@
 module Cardano.Crypto.Wallet.Types
     ( ChainCode(..)
     , DerivationScheme(..)
+    , DerivationIndex
     , pattern LatestScheme
     ) where
 
@@ -13,6 +14,8 @@ import           Data.Hashable   (Hashable)
 import Foundation
 import Foundation.Collection (nonEmpty_)
 import Foundation.Check (Arbitrary(..), frequency)
+
+type DerivationIndex = Word32
 
 data DerivationScheme = DerivationScheme1 | DerivationScheme2
     deriving (Show, Eq, Ord, Enum, Bounded, Typeable)
