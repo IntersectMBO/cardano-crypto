@@ -61,14 +61,12 @@ import Data.ByteArray (ByteArrayAccess)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 
-type IVSizeWords = 3
-type IVSizeBits  = 32
+type IVSizeWords = 6
+type IVSizeBytes = 8
+type IVSizeBits  = 64
 
 ivSizeBytes :: Int
-ivSizeBytes = 4
-
-constant :: ByteString
-constant = "IOHK"
+ivSizeBytes = 8
 
 -- | Number of iteration of the PBKDF2
 iterations :: Int
@@ -78,13 +76,13 @@ newtype ScrambleIV = ScrambleIV ByteString
     deriving (Eq,Ord,Show,Typeable,ByteArrayAccess)
 instance Arbitrary ScrambleIV where
     arbitrary = do
-        l <- arbitrary :: Gen (ListN 4 Word8)
+        l <- arbitrary :: Gen (ListN IVSizeBytes Word8)
         pure $ throwCryptoError $ mkScrambleIV $ B.pack $ ListN.unListN l
 
 mkScrambleIV :: ByteString -> CryptoFailable ScrambleIV
 mkScrambleIV bs
-    | B.length bs == 4 = CryptoPassed (ScrambleIV bs)
-    | otherwise        = CryptoFailed CryptoError_IvSizeInvalid
+    | B.length bs == ivSizeBytes = CryptoPassed (ScrambleIV bs)
+    | otherwise                  = CryptoFailed CryptoError_IvSizeInvalid
 
 -- | scamble the given entropy into an entropy slighly larger.
 --
@@ -108,7 +106,7 @@ scramble :: forall entropysizeI entropysizeO mnemonicsize scramblesize csI csO
          -> Passphrase
          -> Entropy entropysizeO
 scramble (ScrambleIV iv) e passphrase =
-    let salt = iv <> constant
+    let salt = iv
         otp :: ScrubbedBytes
         otp = PBKDF2.fastPBKDF2_SHA512
                     (PBKDF2.Parameters iterations entropySize)
@@ -172,7 +170,7 @@ unscramble e passphrase =
          Just e' -> e'
   where
     (iv, eraw) = B.splitAt ivSizeBytes (entropyRaw e) :: (ByteString, ByteString)
-    salt = iv <> constant
+    salt = iv
     otp :: ScrubbedBytes
     otp = PBKDF2.fastPBKDF2_SHA512
                   (PBKDF2.Parameters iterations entropySize)

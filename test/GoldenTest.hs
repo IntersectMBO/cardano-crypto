@@ -75,8 +75,6 @@ goldenPaperwallet = group $ do
         Mnemonic (scrambleMnemonic (Proxy @160) iv input pw)
     golden (Proxy :: Proxy (GoldenPaperWallet 192)) $ \iv (Mnemonic input) pw ->
         Mnemonic (scrambleMnemonic (Proxy @192) iv input pw)
-    golden (Proxy :: Proxy (GoldenPaperWallet 224)) $ \iv (Mnemonic input) pw ->
-        Mnemonic (scrambleMnemonic (Proxy @224) iv input pw)
 
 -- -------------------------------------------------------------------------- --
 
