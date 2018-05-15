@@ -91,7 +91,7 @@ encryptedCreate sec pass cc
             then return $ CryptoPassed $ EncryptedKey k
             else return $ CryptoFailed CryptoError_SecretKeyStructureInvalid
 
--- | Create a new encrypted that use a different passphrase
+-- | Create a new encrypted key that uses a different passphrase
 encryptedChangePass :: (ByteArrayAccess oldPassPhrase, ByteArrayAccess newPassPhrase)
                     => oldPassPhrase -- ^ passphrase to decrypt the current encrypted key
                     -> newPassPhrase -- ^ new passphrase to use for the new encrypted key
@@ -107,7 +107,7 @@ encryptedChangePass oldPass newPass (EncryptedKey okey) =
                          npass (fromIntegral $ B.length newPass)
                          ekey
 
--- | Sign using the encrypted keys and temporarly decrypting the secret in memory
+-- | Sign using the encrypted keys and temporarly decrypt the secret in memory
 -- with a minimal memory footprint.
 encryptedSign :: (ByteArrayAccess passphrase, ByteArrayAccess msg)
               => EncryptedKey
@@ -149,11 +149,11 @@ encryptedDerivePublic dscheme (pub, cc) childIndex
                     if r /= 0 then error "encrypted derive public assumption about index failed" else return ()
         return (newPub, newCC)
 
--- | Get the public part of a encrypted key
+-- | Get the public part of an encrypted key
 encryptedPublic :: EncryptedKey -> ByteString
 encryptedPublic (EncryptedKey ekey) = sub publicKeyOffset publicKeySize ekey
 
--- | Get the chain code part of a encrypted key
+-- | Get the chain code part of an encrypted key
 encryptedChainCode :: EncryptedKey -> ByteString
 encryptedChainCode (EncryptedKey ekey) = sub ccOffset ccSize ekey
 
