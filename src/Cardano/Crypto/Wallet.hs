@@ -3,17 +3,17 @@
 -- Description : HD Wallet routines
 -- Maintainer  : vincent@typed.io
 --
--- This provide similar functionality than BIP32 but using
+-- This provides similar functionality to BIP32 but using
 -- Ed25519 arithmetic instead of P256K1 arithmethic.
 --
 -- Key can be hierarchically derived from private key in two
--- fashion: Hardened or Normal.
+-- fashions: Hardened or Normal.
 --
 -- In the hardened scheme, the child secret key is not linearly
--- derived, so that the child public key have no way
+-- derived, so that the child public key has no way
 -- to be efficiently computed from the parent public key.
 --
--- The normal scheme, allows anyone to derive public keys from
+-- The normal scheme allows anyone to derive public keys from
 -- public key.
 --
 {-# LANGUAGE GADTs               #-}
@@ -88,20 +88,20 @@ newtype XSignature = XSignature
 
 -- | Generate a new XPrv
 --
--- The seed need to be at least 32 bytes, otherwise an asynchronous error in throwned
+-- The seed needs to be at least 32 bytes, otherwise an asynchronous error is thrown
 generate :: (ByteArrayAccess passPhrase, ByteArrayAccess seed)
          => seed
          -> passPhrase
          -> XPrv
 generate seed passPhrase
-    | B.length seed < 32 = error ("Wallet.generate: seed need to be >= 32 bytes, got : " ++ show (B.length seed))
+    | B.length seed < 32 = error ("Wallet.generate: seed needs to be >= 32 bytes, got : " ++ show (B.length seed))
     | otherwise          = loop 1
   where
     phrase :: Int -> ByteString
     phrase i = "Root Seed Chain " `B.append` BC.pack (show i)
 
     -- repeatdly try to generate from a seed, if we reach 1000th iteration we just bail
-    -- this should find a candidate after 2 try on average
+    -- this should find a candidate after 2 tries on average
     loop i
         | i > 1000  = error "internal error: Wallet.generate looping forever"
         | otherwise =
@@ -117,7 +117,7 @@ generate seed passPhrase
 -- | Simple constructor
 xprv :: ByteArrayAccess bin => bin -> Either String XPrv
 xprv bs =
-      maybe (Left "error: xprv need to be 128 bytes") (Right . XPrv)
+      maybe (Left "error: xprv needs to be 128 bytes") (Right . XPrv)
     $ encryptedKey
     $ convert bs
 
@@ -126,7 +126,7 @@ unXPrv (XPrv e) = unEncryptedKey e
 
 xpub :: ByteString -> Either String XPub
 xpub bs
-    | B.length bs /= 64 = Left ("error: xprv need to be 64 bytes: got " ++ show (B.length bs) ++ " bytes")
+    | B.length bs /= 64 = Left ("error: xprv needs to be 64 bytes: got " ++ show (B.length bs) ++ " bytes")
     | otherwise         =
         let (b1, b2) = B.splitAt 32 bs
          in Right $ XPub b1 (ChainCode $ convert b2)
@@ -136,7 +136,7 @@ unXPub (XPub pub (ChainCode cc)) = B.append pub cc
 
 xsignature :: ByteString -> Either String XSignature
 xsignature bs
-    | B.length bs /= 64 = Left ("error: xsignature need to be 64 bytes: got " ++ show (B.length bs) ++ " bytes")
+    | B.length bs /= 64 = Left ("error: xsignature needs to be 64 bytes: got " ++ show (B.length bs) ++ " bytes")
     | otherwise         = Right $ XSignature bs
 
 -- | Generate extended public key from private key
