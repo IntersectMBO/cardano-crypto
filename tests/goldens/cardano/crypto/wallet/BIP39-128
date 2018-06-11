@@ -1,9 +1,9 @@
 # Test Vector 1
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m"
+path = []
 seed = "c9e4ea2f8ca1a32501e2492570a61dc30f35412cb84b5f2502500c177f22db5a"
 signature = "ef3b85dc3d5c73fac825548399ec6a0de68a63191fe156a448db9ed4cb0169cad11d7d8e1578d643a3a33b60f4dfb4330617ee13c9fa1f8b3098a08c81589a0a"
 words = "ring crime symptom enough erupt lady behave ramp apart settle citizen junk"
@@ -12,10 +12,10 @@ xPub = "6d0997613ace6f96eb9e1aefc7df87ac7770d646da27239d030f58e91fcb874801409fb8
 
 # Test Vector 2
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'"
+path = [2147483648]
 seed = "c9e4ea2f8ca1a32501e2492570a61dc30f35412cb84b5f2502500c177f22db5a"
 signature = "da21327286fe4fa0f2bf384bb844b15aedd1c80703c31edeaf25b4b84977ee7a9d83e70cd0b53a88df2dc8de1c453d045f70840bc961a34b72a0ca81eafb1c01"
 words = "ring crime symptom enough erupt lady behave ramp apart settle citizen junk"
@@ -24,10 +24,10 @@ xPub = "12c8f81f51bc7e251d6f64c02e3b4c8138583e13db939a28f68119a636d9e3e38a5f1106
 
 # Test Vector 3
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/1'"
+path = [2147483649]
 seed = "c9e4ea2f8ca1a32501e2492570a61dc30f35412cb84b5f2502500c177f22db5a"
 signature = "18e117eb3ad8119cbf3b8e4d193c5fa3357697fe15b87db87df948c0609354ef62f9f816c96f52f08e054a43404b9297a5917e8f177bd483518cec5aebdbac05"
 words = "ring crime symptom enough erupt lady behave ramp apart settle citizen junk"
@@ -36,10 +36,10 @@ xPub = "bc85abf1758fb8de8c76ae329d3b86d0c33938c9b1d12c5456b2b8ca2d36f0506b2ecab7
 
 # Test Vector 4
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'/1'"
+path = [2147483648, 2147483649]
 seed = "c9e4ea2f8ca1a32501e2492570a61dc30f35412cb84b5f2502500c177f22db5a"
 signature = "56b9afd15d010d18c85702b008aa11c705d6ee56afc907a9ae59b634c8d969e0176681048fcde602c56924c633149e823c9ae7602b9bd19c5a4e914dc013a104"
 words = "ring crime symptom enough erupt lady behave ramp apart settle citizen junk"
@@ -48,10 +48,10 @@ xPub = "7602ba1065f776a11ca9e77d6bda40c411ea47151a59623de1a6f59b2f107a89bc606169
 
 # Test Vector 5
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'/1'/2'"
+path = [2147483648, 2147483649, 2147483650]
 seed = "c9e4ea2f8ca1a32501e2492570a61dc30f35412cb84b5f2502500c177f22db5a"
 signature = "bd471faa473fe5780f826383e844de4b29328051c30cf75d73b3beeb087c51550d27b2dcae99ed225ac82d8cc0d2f56c04177dd7bc04cde4c5f75c5a3bfcdc02"
 words = "ring crime symptom enough erupt lady behave ramp apart settle citizen junk"
@@ -60,10 +60,10 @@ xPub = "c9d31870ba4117baad2b7a73de389b06cfe749520df5e6dc5a4a58756e899bec221137ad
 
 # Test Vector 6
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'/1'/2'/2'"
+path = [2147483648, 2147483649, 2147483650, 2147483650]
 seed = "c9e4ea2f8ca1a32501e2492570a61dc30f35412cb84b5f2502500c177f22db5a"
 signature = "0d7cf539bdfe8d16a18b5a58fcfa77fc032c0420ae9f3b05de8f172e0dceb84952d9b4d08493c5cd93f6e18a41e48f9c896899458480200bdebe3c6d4b1cf004"
 words = "ring crime symptom enough erupt lady behave ramp apart settle citizen junk"
@@ -72,10 +72,10 @@ xPub = "5793a111a877aac5cc60413b7a37f2a29a52749c6512235b761822442ee2aee38181641c
 
 # Test Vector 7
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'/1'/2'/2'/1000000000'"
+path = [2147483648, 2147483649, 2147483650, 2147483650, 3147483648]
 seed = "c9e4ea2f8ca1a32501e2492570a61dc30f35412cb84b5f2502500c177f22db5a"
 signature = "05aa5ec7e7f8bbd319242b81e5a4cd93f247145de24a541c0e181eede3af427edf1f351f08e63ec32b2823405424146454263546d55bbf47d0208c12842c0603"
 words = "ring crime symptom enough erupt lady behave ramp apart settle citizen junk"
@@ -84,10 +84,10 @@ xPub = "ae4fd370c00f24d8f499dc6965719352830e4d8d24ce6d9fe7ff18867d27e8a18ae3e435
 
 # Test Vector 8
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme2"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme2"
 passphrase = ""
-path = "m/0'/1'/2'/2'/1000000000'"
+path = [2147483648, 2147483649, 2147483650, 2147483650, 3147483648]
 seed = "c9e4ea2f8ca1a32501e2492570a61dc30f35412cb84b5f2502500c177f22db5a"
 signature = "0ecf56869c2b2212e80ddd872e089053ac6ace13c8597b7934177ef17ea980a7bd5cc50feccd36e8261919d08c853281fcfeec13599eaf667a629f5f0baf7b0b"
 words = "ring crime symptom enough erupt lady behave ramp apart settle citizen junk"
@@ -96,10 +96,10 @@ xPub = "29f6c917baefd25001764572d7c3a94001a36c053687d16a764549f77018d4e6d1efd3c0
 
 # Test Vector 9
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme2"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme2"
 passphrase = ""
-path = "m/0'/1'"
+path = [2147483648, 2147483649]
 seed = "c9e4ea2f8ca1a32501e2492570a61dc30f35412cb84b5f2502500c177f22db5a"
 signature = "9369c459317b7ca6ea4c0d3e631f81548ce5d6aef9ed488d0575ef7262a0ec2f6e24fe5d7a72038dbba5eb3b03bb9b6ed749bb1b2d5e231c5c6af2ae8fb0c806"
 words = "ring crime symptom enough erupt lady behave ramp apart settle citizen junk"
@@ -108,10 +108,10 @@ xPub = "b6eb7e57b55f06812c101b29e1b3a5906b5db3b2f6fbfc12e562f848b54acc36e7f8ddcc
 
 # Test Vector 10
 TestVector
-data-to-sign = "Data"
-derivation-scheme = "derivation-scheme2"
+data_to_sign = "Data"
+derivation_scheme = "derivation-scheme2"
 passphrase = ""
-path = "m/0'/1'/24/2000"
+path = [2147483648, 2147483649, 24, 2000]
 seed = "c9e4ea2f8ca1a32501e2492570a61dc30f35412cb84b5f2502500c177f22db5a"
 signature = "7a109eee93454ab399d94a9251ca4e76ce5652b5dafa1861d6ecca3c92933dd6759a84d715ff04816e3669880b02815e9cb6bda7f4541bb0c5b5d7e6704e5a05"
 words = "ring crime symptom enough erupt lady behave ramp apart settle citizen junk"
@@ -120,10 +120,10 @@ xPub = "998cbec5bbb5930d63a9db05c1e2188459f44df37d4e212e3fda5b187103ce794bda7290
 
 # Test Vector 11
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme2"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme2"
 passphrase = ""
-path = "m/0'/1'/24/2000'"
+path = [2147483648, 2147483649, 24, 2147485648]
 seed = "c9e4ea2f8ca1a32501e2492570a61dc30f35412cb84b5f2502500c177f22db5a"
 signature = "ff43a3c78049d9bf715317ecf78855de85ce86a23c89b5994a56776acba7785516bcdc9fe218f620cec655f83c7fcd389bbd4a9dbf869498c855178b52546f0d"
 words = "ring crime symptom enough erupt lady behave ramp apart settle citizen junk"

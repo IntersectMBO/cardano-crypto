@@ -1,9 +1,9 @@
 # Test Vector 1
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m"
+path = []
 seed = "1e098116c242f6107aa8f2f0174d5714dfa35b2aaa6fd58b1dcf1a4184152ea0"
 signature = "e3347b8d3276dced43f9023e36c0020d9dae343c6e85c0146d0555c3cd352e7f0290e934ef85c4e4db1df56eb3909e46482bc8b530eff72254c6208d7dd3b808"
 words = "satisfy issue lottery twice mimic sword select raw twin ball harsh wide chat machine keep"
@@ -12,10 +12,10 @@ xPub = "31298fab6e65f94ecb0306091d78c387bf28c9cd0cd4464f74614206dc1ce68bd03d3bc3
 
 # Test Vector 2
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'"
+path = [2147483648]
 seed = "1e098116c242f6107aa8f2f0174d5714dfa35b2aaa6fd58b1dcf1a4184152ea0"
 signature = "d4e6ef6f5a2cf963254612fd546d56ee0baa03fc10ed871074f2fd6f7dd85d9e426cfee0ee56262150bf731dd0d952d23ade2c754fa594799fc31accf0893005"
 words = "satisfy issue lottery twice mimic sword select raw twin ball harsh wide chat machine keep"
@@ -24,10 +24,10 @@ xPub = "1bed35b0dfa15c9632b53640ac5e232796947a094bc0455a3dd9d275b307fe8119812e96
 
 # Test Vector 3
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/1'"
+path = [2147483649]
 seed = "1e098116c242f6107aa8f2f0174d5714dfa35b2aaa6fd58b1dcf1a4184152ea0"
 signature = "80650678d3d5f676e4961d88b366fb32139a47ac23bbc6264221d92448b39eb273b5dd0b465d67045a589f0362808365188b3647c06979e2a26724232c8b2706"
 words = "satisfy issue lottery twice mimic sword select raw twin ball harsh wide chat machine keep"
@@ -36,10 +36,10 @@ xPub = "4e466ed5d1397801ea0aae7458a061856d91da9330849a145d20cd15636ff783fa77861c
 
 # Test Vector 4
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'/1'"
+path = [2147483648, 2147483649]
 seed = "1e098116c242f6107aa8f2f0174d5714dfa35b2aaa6fd58b1dcf1a4184152ea0"
 signature = "37631796d91bab3601b6af26c863057ad7e12817666d6784c353d2dbd5e2df1d5faff40994ba5f48e31886d6128f2ece281c5b5b4fff5348a4136fd224f13d03"
 words = "satisfy issue lottery twice mimic sword select raw twin ball harsh wide chat machine keep"
@@ -48,10 +48,10 @@ xPub = "86deb5058c7bd3bad01fb5f53236011fe129492cb21be2b3d48280b5d8d299df01245876
 
 # Test Vector 5
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'/1'/2'"
+path = [2147483648, 2147483649, 2147483650]
 seed = "1e098116c242f6107aa8f2f0174d5714dfa35b2aaa6fd58b1dcf1a4184152ea0"
 signature = "830ffa4e660132e64824bd7f5e7287aa41d69bf740dbe5d3875f593dd16fa35e2cd475b0395f7968797dfe9372597b5e952ff8af208808860b1dc6dc17932400"
 words = "satisfy issue lottery twice mimic sword select raw twin ball harsh wide chat machine keep"
@@ -60,10 +60,10 @@ xPub = "2d6a306c71702d954ffe8a17a45055d5ff251a737d527aaae23f888965227ecbc0aad45d
 
 # Test Vector 6
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'/1'/2'/2'"
+path = [2147483648, 2147483649, 2147483650, 2147483650]
 seed = "1e098116c242f6107aa8f2f0174d5714dfa35b2aaa6fd58b1dcf1a4184152ea0"
 signature = "d6ce08104bc6ef63fb6d99c5d38a2febbbb2aedf0c27dea73fbae02d918cbbee457e1224b05e47661e6c67eff255cf8c58bdac5cc39adf6961b72d67f26b7d08"
 words = "satisfy issue lottery twice mimic sword select raw twin ball harsh wide chat machine keep"
@@ -72,10 +72,10 @@ xPub = "6599ac72b2cbd2c77eb7c7f881cd379d04031f7be6881e19c9c4465b2381047a7eb34328
 
 # Test Vector 7
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'/1'/2'/2'/1000000000'"
+path = [2147483648, 2147483649, 2147483650, 2147483650, 3147483648]
 seed = "1e098116c242f6107aa8f2f0174d5714dfa35b2aaa6fd58b1dcf1a4184152ea0"
 signature = "a45cce099fd35b8c48497d3d93b294c0785037679392a05b885909b16450e0dd8e75dce1a67e7c77ca9d36242aa72da3a767bb8a80a48ad473551ac00ea37208"
 words = "satisfy issue lottery twice mimic sword select raw twin ball harsh wide chat machine keep"

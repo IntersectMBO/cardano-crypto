@@ -24,8 +24,8 @@ import Foundation.String.Read (readIntegral)
 import Data.List (elemIndex)
 
 import Inspector
-import Inspector.Display
-import Inspector.Parser
+import qualified Inspector.TestVector.Types as Type
+import qualified Inspector.TestVector.Value as Value
 
 import Data.ByteArray (Bytes, convert)
 import qualified Data.ByteArray as B
@@ -39,7 +39,7 @@ import qualified Cardano.Crypto.Praos.VRF as VRF
 import Test.Orphans
 
 main :: IO ()
-main = defaultMain $ do
+main = defaultTest $ do
     goldenBIP39
     goldenHDWallet
     goldenPaperwallet
@@ -82,9 +82,9 @@ type HDWallet n
     = "cardano" :> "crypto" :> "wallet" :> PathParameter "BIP39-" n
       :> Payload "words" (Mnemonic 'English (MnemonicWords n))
       :> Payload "passphrase" Passphrase
-      :> Payload "derivation-scheme" DerivationScheme
+      :> Payload "derivation_scheme" DerivationScheme
       :> Payload "path" ChainCodePath
-      :> Payload "data-to-sign" String
+      :> Payload "data_to_sign" String
       :> ( Payload "xPub" XPub
          , Payload "xPriv" XPrv
          , Payload "signature" XSignature
@@ -170,28 +170,12 @@ newtype ChainCodePath = Root [Word32]
   deriving (Show, Eq, Typeable)
 instance Arbitrary ChainCodePath where
     arbitrary = Root <$> arbitrary
-instance Display ChainCodePath where
-    encoding _ = "m[([0-9]+|[0-9]+')]*"
-    display (Root l) = "\"" <> intercalate "/" ((:) "m" $ f <$> l) <> "\""
-      where
-        f :: Word32 -> String
-        f w
-          | w >= 0x80000000 = show (w - 0x80000000) <> "'"
-          | otherwise       = show w
 
-instance HasParser ChainCodePath where
-    getParser = do
-        Parser.elements "\"m"
-        l <- Parser.many $ do
-                Parser.element '/'
-                r <- Parser.takeWhile (`elem` ['0'..'9'])
-                mh <- Parser.optional $ Parser.element '\''
-                r' <- maybe (reportError $ Expected "Integer" r) pure $ readIntegral r
-                pure $ case mh of
-                    Nothing -> r'
-                    Just () -> r' + 0x80000000
-        Parser.element '"'
-        pure $ Root l
+instance Inspectable ChainCodePath where
+    documentation _ = "Derivation Chain code path: list of derivation path."
+    exportType    _ = Type.Array $ Type.UnsizedArray Type.Unsigned32
+    builder (Root l) = builder l
+    parser        v = Root <$> parser v
 
 -- Enum for the support language to read/write from mnemonic
 data Language = English
@@ -212,18 +196,16 @@ instance Arbitrary (Mnemonic 'English 21) where
 instance Arbitrary (Mnemonic 'English 24) where
     arbitrary = Mnemonic . entropyToWords @256 @8 @24 <$> arbitrary
 
-instance ValidMnemonicSentence n => Display (Mnemonic 'English n) where
-    display (Mnemonic l) = "\"" <> mnemonicSentenceToString english l <> "\""
-    encoding _ = "UTF8"
-    comment _ = Just $ "list of " <> show n <> " BIP39 english words"
+instance ValidMnemonicSentence n => Inspectable (Mnemonic 'English n) where
+    documentation _ = "BIP39 mnemonic sentence (in English) of " <> show n <> " BIP39 Enlighs words"
       where
         n = natVal @n Proxy
-
-instance ValidMnemonicSentence n => HasParser (Mnemonic 'English n) where
-    getParser = do
-        strs <- words <$> strParser
+    exportType    _ = Type.String
+    builder (Mnemonic l) = Value.String $ mnemonicSentenceToString english l
+    parser v = do
+        strs <- words <$> parser v
         Mnemonic <$> case mnemonicPhrase @n strs of
-            Nothing -> reportError $ Expected (show n <> " words") (show (length strs) <> " words")
+            Nothing -> Left $ "Expected " <> show n <> " words. But received " <> show (length strs) <> " words."
             Just l  -> pure $ mnemonicPhraseToMnemonicSentence english l
       where
         n = natVal @n Proxy
