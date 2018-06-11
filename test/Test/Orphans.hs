@@ -44,8 +44,8 @@ instance Inspectable Seed.ScrambleIV where
 instance Inspectable P256.Scalar where
     documentation _ = "P256 Scalar"
     exportType    _ = Type.Array $ Type.UnsizedArray Type.Unsigned8
-    builder         = Value.Integer . P256.unScalar -- builder . (P256.scalarToBytes :: P256.Scalar -> Bytes)
-    parser          = withInteger "P256.Scalar" (pure . P256.keyFromNum)
+    builder         = builder . (P256.scalarToBytes :: P256.Scalar -> Bytes)
+    parser        v = P256.keyFromBytes <$> (parser v :: Either String Bytes)
 
 instance Inspectable Wallet.DerivationScheme where
     documentation _ = "Wallet's derivation schemes: String either \"derivation-scheme1\" or \"derivation-scheme2\""
