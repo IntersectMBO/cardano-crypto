@@ -153,7 +153,7 @@ instance (BIP39.ValidEntropySize n, BIP39.ValidChecksumSize n csz) => Inspectabl
 
 instance Inspectable BIP39.Seed where
     documentation _ = "BIP39 Seed"
-    exportType    _ = Type.Array $ Type.SizedArray Type.Unsigned8 64
+    exportType    _ = Type.Array $ Type.SizedArray Type.Unsigned8 32
     builder         = builder . toBytes
     parser        v = convert <$> (parser v :: Either String ByteString)
 
