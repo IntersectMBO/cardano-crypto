@@ -1,9 +1,9 @@
 # Test Vector 1
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m"
+path = []
 seed = "a982361d7bc4028dd748aa0f21353dd0910c68854ea70f0595746237529001da"
 signature = "6903610043edd71bff3ad7ac8331e1bbe146f4b30adadd32ff9e6c1ed357c7af0e318dee92461d7565ea850e0e72522ebb954de9b606b5ad10969a5d38b74600"
 words = "mouse logic say gym hip jaguar country lake black hood program acoustic sunny cram capital brush office wage winter rapid calm metal veteran history"
@@ -12,10 +12,10 @@ xPub = "9ab40d134e37a49ae4e542ae907a93909a19f4f1663df4727915f8b50286c3ba2fcfce11
 
 # Test Vector 2
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'"
+path = [2147483648]
 seed = "a982361d7bc4028dd748aa0f21353dd0910c68854ea70f0595746237529001da"
 signature = "68a5eeeafc6f186963ceb17966b6492d67c8996756e6469916ec5d6a9a41ff5c2bdf74747953caa7e2b75b79ec9cf227c8e3b796fe30fee4e9cc92c19958df00"
 words = "mouse logic say gym hip jaguar country lake black hood program acoustic sunny cram capital brush office wage winter rapid calm metal veteran history"
@@ -24,10 +24,10 @@ xPub = "dc58ec60ecf38551fcc5c1803210c4f9deee87803228304a8e42980bf9854db972938211
 
 # Test Vector 3
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/1'"
+path = [2147483649]
 seed = "a982361d7bc4028dd748aa0f21353dd0910c68854ea70f0595746237529001da"
 signature = "b96345d446fe8b77c92929c770fcaa49a0a2728a52c05900e151fbfa6e00aa19285c79c618237b201128c1f43f114a57afa94a08ad6167d475de5a04040e4a0f"
 words = "mouse logic say gym hip jaguar country lake black hood program acoustic sunny cram capital brush office wage winter rapid calm metal veteran history"
@@ -36,10 +36,10 @@ xPub = "df470acde36e933257e310bbfa87f3d65a06ee5005da099118001cde23b2f65656ce493d
 
 # Test Vector 4
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'/1'"
+path = [2147483648, 2147483649]
 seed = "a982361d7bc4028dd748aa0f21353dd0910c68854ea70f0595746237529001da"
 signature = "717812c73ee5e62cd57b9206bb2852881ef06b847018749b50f8a99f535f96361bb3387d99b62101509d509ff656519070d2fe4a64195bc23e93c5d057c5900a"
 words = "mouse logic say gym hip jaguar country lake black hood program acoustic sunny cram capital brush office wage winter rapid calm metal veteran history"
@@ -48,10 +48,10 @@ xPub = "5a238bc218df20f84043a62961174cac80d07695042f79cc031f17671c970d7869606480
 
 # Test Vector 5
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'/1'/2'"
+path = [2147483648, 2147483649, 2147483650]
 seed = "a982361d7bc4028dd748aa0f21353dd0910c68854ea70f0595746237529001da"
 signature = "ba4f5fc2056904e1f737fd14c5c5440aa44b413fd41d8e9c6992cc08c67715578fd7724d523a796c7f5ab32dc0f84dcf2411f9c5e37c19f800bae79eabcff404"
 words = "mouse logic say gym hip jaguar country lake black hood program acoustic sunny cram capital brush office wage winter rapid calm metal veteran history"
@@ -60,10 +60,10 @@ xPub = "2a5ec19507c5f6a7dc6c6788611a7d5f01b65074be447a63b41708dcf61573e1256229fe
 
 # Test Vector 6
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'/1'/2'/2'"
+path = [2147483648, 2147483649, 2147483650, 2147483650]
 seed = "a982361d7bc4028dd748aa0f21353dd0910c68854ea70f0595746237529001da"
 signature = "d092757c768d41c75ee2a996c525ff2f67ecf422e1cbaff8d9b094049926168b2da487b5463fc3bb4cad6f9f4192be9c4ecf84fe294baaf17a316210c1db7504"
 words = "mouse logic say gym hip jaguar country lake black hood program acoustic sunny cram capital brush office wage winter rapid calm metal veteran history"
@@ -72,10 +72,10 @@ xPub = "b4bc2db28a25dde645e3fb90041c652602e0b8600030a64a9a3711bd5c58ea4978dc64ff
 
 # Test Vector 7
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'/1'/2'/2'/1000000000'"
+path = [2147483648, 2147483649, 2147483650, 2147483650, 3147483648]
 seed = "a982361d7bc4028dd748aa0f21353dd0910c68854ea70f0595746237529001da"
 signature = "7ac8658f167ec75d81b6a8dd3de82532c25a326844f2aacfc3b98799095bb795cf04b250f5f1e6b2fadc99ef112a1e481444f80509298d3d017fc2adad852902"
 words = "mouse logic say gym hip jaguar country lake black hood program acoustic sunny cram capital brush office wage winter rapid calm metal veteran history"

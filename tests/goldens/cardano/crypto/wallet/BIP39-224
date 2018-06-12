@@ -1,9 +1,9 @@
 # Test Vector 1
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m"
+path = []
 seed = "3b53df17a533f917ebf1b5c7d66f1d4d8af734ad1c7b58d9411cf948d6f74f89"
 signature = "238318e4c0ffa75aa1b01328eda71c0f02994f68afcccce1de6f57aac6a20b63bad4ed4db6dd4741c0b544db612d356350d1d4a61d0363358991ee617aa0470a"
 words = "borrow oil pizza bench loan sand obvious copy chat split relief lazy search finish begin swift crack scale identify wild once"
@@ -12,10 +12,10 @@ xPub = "0132efe98b5f0c3e9db7ff45fac8b902a0542884d2dff07fb868d759f048f7dd9c7e7c25
 
 # Test Vector 2
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'"
+path = [2147483648]
 seed = "3b53df17a533f917ebf1b5c7d66f1d4d8af734ad1c7b58d9411cf948d6f74f89"
 signature = "5a49d65c9893b64c2f55e7288fd8db07d1010b01cc03db337834086eda602daa57dd1e4628e57dda7e95158764f924ca9d8054700fb89af7eaff2bfb84dd3b04"
 words = "borrow oil pizza bench loan sand obvious copy chat split relief lazy search finish begin swift crack scale identify wild once"
@@ -24,10 +24,10 @@ xPub = "c1fc2be31b3242a51b363d66ce1c2648ececbe23891b0dfef4c1d167d0cc79b5f8482826
 
 # Test Vector 3
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/1'"
+path = [2147483649]
 seed = "3b53df17a533f917ebf1b5c7d66f1d4d8af734ad1c7b58d9411cf948d6f74f89"
 signature = "c22de377919b07eb1a1eb3f4c8a8003ff7b4364481450d0b80368c3cc293e8ee62590e44c9c45cfe7ef4da671f1d926b3edf00984085ebe128ca62d91192e604"
 words = "borrow oil pizza bench loan sand obvious copy chat split relief lazy search finish begin swift crack scale identify wild once"
@@ -36,10 +36,10 @@ xPub = "38f5c3fb0f2dfb4cf9a7338e9b178c4f2d25547ec33f8b14a17b89b1166d6e34e97d8561
 
 # Test Vector 4
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'/1'"
+path = [2147483648, 2147483649]
 seed = "3b53df17a533f917ebf1b5c7d66f1d4d8af734ad1c7b58d9411cf948d6f74f89"
 signature = "c919d27f3e57deabf2e7906324c9eb559cc75c17f80e76608a8c4b41bc01847084218947606ee1be592a480d63a32f2141954d9b5ff50afacb3d9f620c5e740e"
 words = "borrow oil pizza bench loan sand obvious copy chat split relief lazy search finish begin swift crack scale identify wild once"
@@ -48,10 +48,10 @@ xPub = "1ee6f78974b193813853176d28ee101629567e7ebdc0eede1e8f0c281a7830b684ba4171
 
 # Test Vector 5
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'/1'/2'"
+path = [2147483648, 2147483649, 2147483650]
 seed = "3b53df17a533f917ebf1b5c7d66f1d4d8af734ad1c7b58d9411cf948d6f74f89"
 signature = "cbcebe043f37f00f629d531fe79f7882c24b248002797ef6140ce3096de3cb15333b82308c355c5f77a7e964d777cff8360c7e6dcdc6453034301c13af66040b"
 words = "borrow oil pizza bench loan sand obvious copy chat split relief lazy search finish begin swift crack scale identify wild once"
@@ -60,10 +60,10 @@ xPub = "72500f3128c6e66e06e860f7230d249658f3f8bad524f76ef01ca99c3c98a06fa94d76d1
 
 # Test Vector 6
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'/1'/2'/2'"
+path = [2147483648, 2147483649, 2147483650, 2147483650]
 seed = "3b53df17a533f917ebf1b5c7d66f1d4d8af734ad1c7b58d9411cf948d6f74f89"
 signature = "e9fa2590178c4e507396eea55da3a94358a1cfb2d75b303d32302f265260a6348cec2338933e5c11fbdbd83d340dab3de00b39ea571e43fb013147c16b90ce05"
 words = "borrow oil pizza bench loan sand obvious copy chat split relief lazy search finish begin swift crack scale identify wild once"
@@ -72,10 +72,10 @@ xPub = "8ff4132981dbe6c3207dab6726a57afdb4ce0516f60d3f1a88c06e5245d9cb71f5060862
 
 # Test Vector 7
 TestVector
-data-to-sign = "Hello World"
-derivation-scheme = "derivation-scheme1"
+data_to_sign = "Hello World"
+derivation_scheme = "derivation-scheme1"
 passphrase = ""
-path = "m/0'/1'/2'/2'/1000000000'"
+path = [2147483648, 2147483649, 2147483650, 2147483650, 3147483648]
 seed = "3b53df17a533f917ebf1b5c7d66f1d4d8af734ad1c7b58d9411cf948d6f74f89"
 signature = "a6002139cd54ee2f308e198906b3add26d1f5c312d3e9e209ad8ac99002cca78ba5e055799ae7021e187ecac881ce4d2239c55f5d293d58b5757fbd7e1c30406"
 words = "borrow oil pizza bench loan sand obvious copy chat split relief lazy search finish begin swift crack scale identify wild once"

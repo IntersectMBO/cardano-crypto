@@ -11,12 +11,13 @@ import Foundation
 import Foundation.Parser (elements)
 import Basement.Nat
 
-import Inspector.Display
-import Inspector.Parser
+import Inspector
+import qualified Inspector.TestVector.Types as Type
+import qualified Inspector.TestVector.Value as Value
 
 import Crypto.Error
 
-import Data.ByteArray (Bytes)
+import Data.ByteArray (Bytes, convert, ByteArrayAccess)
 import Data.ByteString (ByteString)
 
 import qualified Cardano.Crypto.Encoding.Seed as Seed
@@ -27,123 +28,137 @@ import qualified Crypto.DLEQ as DLEQ
 import qualified Cardano.Crypto.Praos.VRF as VRF
 import qualified Crypto.Encoding.BIP39 as BIP39
 
-instance Display Seed.ScrambleIV where
-    display = displayByteArrayAccess
-    encoding _ = "hexadecimal"
-    comment _ = Just "valid value are only 4 bytes long (8 hexadecimal characters)"
-instance HasParser Seed.ScrambleIV where
-    getParser = do
-        bs <- strParser >>= parseByteArray
+toBytes :: ByteArrayAccess ba => ba -> Bytes
+toBytes = convert
+
+instance Inspectable Seed.ScrambleIV where
+    documentation _ = "Seed scramble IV of 8 bytes"
+    exportType    _ = Type.Array $ Type.SizedArray Type.Unsigned8 8
+    builder         = builder . toBytes
+    parser        v = do
+        bs <- parser v :: Either String ByteString
         case Seed.mkScrambleIV bs of
-            CryptoFailed err -> reportError (Expected "ScrambleIV" (show err))
+            CryptoFailed err -> Left $ "Expected a `ScrambleIV'" <> show err
             CryptoPassed r   -> pure r
 
-instance HasParser P256.Scalar where
-    getParser = P256.Scalar <$> getParser
-instance Display P256.Scalar where
-    encoding _ = encoding (Proxy @Integer)
-    display = display . P256.unScalar
+instance Inspectable P256.Scalar where
+    documentation _ = "P256 Scalar"
+    exportType    _ = Type.Array $ Type.UnsizedArray Type.Unsigned8
+    builder         = builder . (P256.scalarToBytes :: P256.Scalar -> Bytes)
+    parser        v = P256.keyFromBytes <$> (parser v :: Either String Bytes)
 
-instance Display Wallet.DerivationScheme where
-    encoding _ = "string \"derivation-scheme1\""
-    display Wallet.DerivationScheme1 = "\"derivation-scheme1\""
-    display Wallet.DerivationScheme2 = "\"derivation-scheme2\""
-    comment _ = Just "valid values are: \"derivation-scheme1\" or \"derivation-scheme2\""
-instance HasParser Wallet.DerivationScheme where
-    getParser = do
-        str <- strParser
-        case str of
-            "derivation-scheme1" -> pure Wallet.DerivationScheme1
-            "derivation-scheme2" -> pure Wallet.DerivationScheme2
-            s                    -> reportError (Expected "derivation-scheme1 or derivation-scheme2" s)
+instance Inspectable Wallet.DerivationScheme where
+    documentation _ = "Wallet's derivation schemes: String either \"derivation-scheme1\" or \"derivation-scheme2\""
+    exportType    _ = Type.String
+    builder Wallet.DerivationScheme1 = Value.String "derivation-scheme1"
+    builder Wallet.DerivationScheme2 = Value.String "derivation-scheme2"
+    parser          = withString "DerivationScheme" $ \str -> case str of
+        "derivation-scheme1" -> pure Wallet.DerivationScheme1
+        "derivation-scheme2" -> pure Wallet.DerivationScheme2
+        _                    -> Left $ "Expected either `derivation-scheme1' or `derivation-scheme2' but found: `" <> str <> "'"
 
-instance Display Wallet.XPub where
-    display = displayByteArrayAccess . Wallet.unXPub
-    encoding _ = "hexadecimal"
-    comment _ = Just "extended public key"
-instance HasParser Wallet.XPub where
-    getParser = strParser >>= parseByteArray >>= \s -> case Wallet.xpub s of
-        Left err -> reportError $ Expected "xPub" (fromList err)
-        Right e  -> pure e
+instance Inspectable Wallet.XPub where
+    documentation _ = "Wallet's extended public key"
+    exportType    _ = Type.Array $ Type.SizedArray Type.Unsigned8 64
+    builder         = builder . Wallet.unXPub
+    parser        v = do
+        bs <- parser v :: Either String ByteString
+        case Wallet.xpub bs of
+            Left err -> Left $ "Expected `xPub' " <> fromList err
+            Right e  -> pure e
 
-instance Display Wallet.XPrv where
-    display = displayByteArrayAccess
-    encoding _ = "hexadecimal"
-    comment _ = Just "encrypted extended private key"
-instance HasParser Wallet.XPrv where
-    getParser = strParser >>= parseByteArray >>= \s -> case Wallet.xprv (s :: Bytes) of
-        Left err -> reportError $ Expected "xPrv" (fromList err)
-        Right e  -> pure e
+instance Inspectable Wallet.XPrv where
+    documentation _ = "Wallet's extended private key"
+    exportType    _ = Type.Array $ Type.SizedArray Type.Unsigned8 96
+    builder         = builder . Wallet.unXPrv
+    parser        v = do
+        bs <- parser v :: Either String ByteString
+        case Wallet.xprv bs of
+            Left err -> Left $ "Expected `xPrv' " <> fromList err
+            Right e  -> pure e
 
-instance Display Wallet.XSignature where
-    display = displayByteArrayAccess
-    encoding _ = "hexadecimal"
-    comment _ = Just "extended signature"
-instance HasParser Wallet.XSignature where
-    getParser = strParser >>= parseByteArray >>= \s -> case Wallet.xsignature s of
-        Left err -> reportError $ Expected "XSignature" (fromList err)
-        Right e  -> pure e
+instance Inspectable Wallet.XSignature where
+    documentation _ = "Wallet's extended signature"
+    exportType    _ = Type.Array $ Type.SizedArray Type.Unsigned8 64
+    builder         = builder . toBytes
+    parser        v = do
+        bs <- parser v :: Either String ByteString
+        case Wallet.xsignature bs of
+            Left err -> Left $ "Expected `xPrv' " <> fromList err
+            Right e  -> pure e
 
-instance HasParser DLEQ.Challenge where
-    getParser = DLEQ.Challenge <$> getParser
-instance Display DLEQ.Challenge where
-    encoding _ = "hex"
-    display (DLEQ.Challenge c) = display c
+instance Inspectable DLEQ.Challenge where
+    documentation _ = "DLEQ's Challenge"
+    exportType    _ = Type.Array $ Type.UnsizedArray Type.Unsigned8
+    builder         = builder . toBytes
+    parser        v = DLEQ.Challenge <$> parser v
 
-instance HasParser DLEQ.Proof where
-    getParser = do
-        elements "challenge: "
-        c <- getParser
-        elements ", z: "
-        DLEQ.Proof c <$> getParser
-instance Display DLEQ.Proof where
-    encoding _ = "challenge: " <> encoding (Proxy @DLEQ.Challenge) <> ", z: " <> encoding (Proxy @P256.Scalar)
-    display (DLEQ.Proof c z) = "challenge: " <> display c <> ", z: " <> display z
+instance Inspectable DLEQ.Proof where
+    documentation _ = "DLEQ's Proof"
+    exportType    _ = Type.Object $ Type.ObjectDef
+        [ ( "challenge", exportType (Proxy @DLEQ.Challenge))
+        , ( "z",         exportType (Proxy @P256.Scalar))
+        ]
+    builder (DLEQ.Proof challenge z) = Value.Object $ Value.ObjectDef
+        [ ( "challenge", builder challenge)
+        , ( "z",         builder z)
+        ]
+    parser          = withStructure "DLEQ Proof" $ \obj -> do
+        challenge <- parser =<< field obj "challenge"
+        z         <- parser =<< field obj "z"
+        pure $ DLEQ.Proof challenge z
 
-instance HasParser VRF.SecretKey where
-    getParser = c <$> getParser
+instance Inspectable VRF.SecretKey where
+    documentation _ = "VRF's secret key"
+    exportType    _ = Type.Array $ Type.UnsizedArray Type.Unsigned8
+    builder         = builder . (VRF.secretKeyToBytes :: VRF.SecretKey -> Bytes)
+    parser        v = c <$> parser v
       where
         c :: Bytes -> VRF.SecretKey
         c = VRF.secretKeyFromBytes
-instance Display VRF.SecretKey where
-    encoding _ = "hex"
-    display = display . (VRF.secretKeyToBytes :: VRF.SecretKey -> Bytes)
 
-instance HasParser VRF.PublicKey where
-    getParser = c <$> getParser
+instance Inspectable VRF.PublicKey where
+    documentation _ = "VRF's public key"
+    exportType    _ = Type.Array $ Type.UnsizedArray Type.Unsigned8
+    builder         = builder . (VRF.publicKeyToBytes :: VRF.PublicKey -> Bytes)
+    parser        v = c =<< parser v
       where
-        c :: Bytes -> VRF.PublicKey
-        c = either (error . fromList) id . VRF.publicKeyFromBytes
-instance Display VRF.PublicKey where
-    display = display . (VRF.publicKeyToBytes :: VRF.PublicKey -> Bytes)
-    encoding _ = "hex"
+        c :: Bytes -> Either String VRF.PublicKey
+        c bs = fromList `first` VRF.publicKeyFromBytes bs
 
-instance HasParser VRF.Proof where
-    getParser = do
-        elements "u: "
-        u <- getParser
-        elements ", "
-        VRF.Proof u <$> getParser
-instance Display VRF.Proof where
-    encoding _ = "u: `Public Key`, " <> encoding (Proxy :: Proxy DLEQ.Proof)
-    display (VRF.Proof u dleq) = "u: " <> display u <> ", " <> display dleq
+instance Inspectable VRF.Proof where
+    documentation _ = "VRF's Proof"
+    exportType    _ = Type.Object $ Type.ObjectDef
+        [ ( "pk",   exportType (Proxy @VRF.PublicKey))
+        , ( "dleq", exportType (Proxy @DLEQ.Proof))
+        ]
+    builder (VRF.Proof pk dleq) = Value.Object $ Value.ObjectDef
+        [ ( "pk",   builder pk)
+        , ( "dleq", builder dleq)
+        ]
+    parser          = withStructure "VRF Proof" $ \obj -> do
+        pk   <- parser =<< field obj "pk"
+        dleq <- parser =<< field obj "dleq"
+        pure $ VRF.Proof pk dleq
 
-instance Display (BIP39.Entropy n) where
-    display = displayByteArrayAccess . BIP39.entropyRaw
-    encoding _ = "hexadecimal"
-instance (BIP39.ValidEntropySize n, BIP39.ValidChecksumSize n csz) => HasParser (BIP39.Entropy n) where
-    getParser = do
-        bs <- strParser >>= parseByteArray
+instance (BIP39.ValidEntropySize n, BIP39.ValidChecksumSize n csz) => Inspectable (BIP39.Entropy n) where
+    documentation _ = "BIP39 Entropy"
+    exportType    _ = Type.Array $ Type.UnsizedArray Type.Unsigned8
+    builder         = builder . BIP39.entropyRaw
+    parser v = do
+        bs <- parser v
         case BIP39.toEntropy (bs :: Bytes) of
-            Nothing -> reportError (Expected "Entropy" "not the correct size")
+            Nothing -> Left "Expected `Entropy' not the correct size"
             Just r  -> pure r
-instance Display BIP39.Seed where
-    display = displayByteArrayAccess
-    encoding _ = "hexadecimal"
-instance HasParser BIP39.Seed where
-    getParser = strParser >>= parseByteArray
-instance Display ByteString where
-    display = displayByteArrayAccess
-    encoding _ = "hexadecimal"
-instance HasParser ByteString where
-    getParser = strParser >>= parseByteArray
+
+instance Inspectable BIP39.Seed where
+    documentation _ = "BIP39 Seed"
+    exportType    _ = Type.Array $ Type.SizedArray Type.Unsigned8 32
+    builder         = builder . toBytes
+    parser        v = convert <$> (parser v :: Either String ByteString)
+
+instance Inspectable ByteString where
+    documentation _ = "Some random bytes"
+    exportType    _ = Type.Array $ Type.UnsizedArray Type.Unsigned8
+    builder         = builder . toBytes
+    parser        v = convert <$> (parser v :: Either String Bytes)

@@ -14,6 +14,11 @@ extra-source-files:  README.md
 cabal-version:       >=1.10
 
 flag golden-tests
+  description:       compile the golden tests and run them
+  default:           False
+  manual:            True
+
+flag golden-tests-exe
   description:       compile the golden test binary allowing to generate pretty markdown output
   default:           False
   manual:            True
@@ -91,17 +96,21 @@ test-suite cardano-crypto-golden-tests
                      , memory
                      , bytestring
                      , cryptonite
-                     , inspector
                      , cardano-crypto
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-extensions:  NoImplicitPrelude
   default-language:    Haskell2010
+  if flag(golden-tests)
+    build-depends:     inspector
+    buildable:         True
+  else
+    buildable:         False
 
 executable golden-tests
   hs-source-dirs:      test
   main-is:             GoldenTest.hs
   other-modules:       Test.Orphans
-  if flag(golden-tests)
+  if flag(golden-tests-exe)
     build-depends:     inspector
     buildable:         True
   else
