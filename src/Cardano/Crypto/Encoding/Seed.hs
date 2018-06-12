@@ -6,15 +6,15 @@
 -- implementation of the proposal specification for Paper Wallet
 -- see https://github.com/input-output-hk/cardano-specs/blob/master/proposals/0001-PaperWallet.md
 --
--- however we took allow more genericity in the implementation and to allow
+-- however we allow more genericity in the implementation to allow
 -- not only 12 mnemonic words to freeze but also 15, 18 and 21.
 --
--- because the output mnemonic words is always 3 words longer (for the IV)
+-- because the output mnemonic words are always 3 words longer (for the IV)
 -- we cannot use 24 words long mnemonic sentence.
 --
 -- assumption:
 --
--- * we use 'PBKDF2' with 'HMAC 512' to generap the OTP.
+-- * we use 'PBKDF2' with 'HMAC 512' to generate the OTP.
 -- * we use 10000 iteration for the PBKDF2
 -- * we use the 4 bytes "IOHK" for the CONSTANT
 --
@@ -84,9 +84,9 @@ mkScrambleIV bs
     | B.length bs == ivSizeBytes = CryptoPassed (ScrambleIV bs)
     | otherwise                  = CryptoFailed CryptoError_IvSizeInvalid
 
--- | scamble the given entropy into an entropy slighly larger.
+-- | scramble the given entropy into an entropy slighly larger.
 --
--- This entropy can then be used to be converted to a mnemonic sentence:
+-- This entropy can then be converted to a mnemonic sentence:
 --
 -- @
 -- freeze iv mnemonics passphrase = entropyToWords . scramble iv entropy passphrase
@@ -142,7 +142,7 @@ scrambleMnemonic _ iv mw passphrase =
 -- |
 -- The reverse operation of 'scramble'
 --
--- This function recover the original entropy from the given scrambled entropy
+-- This function recovers the original entropy from the given scrambled entropy
 -- and the associated password.
 --
 -- @
