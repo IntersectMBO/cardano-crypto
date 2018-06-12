@@ -30,6 +30,14 @@ cardanoSlSeed :: forall n csz mw . ConsistentEntropy n mw csz
 cardanoSlSeed _ mw =
     case wordsToEntropy @n @csz @mw mw of
         Nothing -> Nothing
-        Just e -> Just $ BA.convert $ blake2b (entropyRaw e)
+        Just e -> Just $ BA.convert $ toCbor $ blake2b $ toCbor (entropyRaw e)
   where blake2b :: ByteString -> Digest Blake2b_256
         blake2b = hash
+
+        toCbor :: BA.ByteArrayAccess ba => ba -> ByteString
+        toCbor bs
+            | len < 24    = BA.cons (0x40 + fromIntegral len) $ BA.convert bs
+            | len < 0x100 = BA.cons 0x58 $ BA.cons (fromIntegral len) $ BA.convert bs
+            | otherwise   = error "we do not support entropy of length > 256 bytes"
+          where
+            len = BA.length bs
