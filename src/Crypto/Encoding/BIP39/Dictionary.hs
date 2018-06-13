@@ -122,7 +122,7 @@ instance ValidMnemonicSentence mw => IsList (MnemonicSentence mw) where
 type ValidMnemonicSentence (mw :: Nat) =
     ( KnownNat mw
     , NatWithinBound Int mw
-    , Elem mw '[12, 15, 18, 21, 24]
+    , Elem mw '[9, 12, 15, 18, 21, 24]
     )
 
 -- | Human readable representation of a 'MnemonicSentence'
@@ -133,7 +133,7 @@ newtype MnemonicPhrase (mw :: Nat) = MnemonicPhrase
   deriving (Show, Eq, Ord, Typeable, NormalForm)
 instance ValidMnemonicSentence mw => IsList (MnemonicPhrase mw) where
     type Item (MnemonicPhrase mw) = String
-    fromList = fromMaybe (error "invliad mnemonic phrase") . mnemonicPhrase
+    fromList = fromMaybe (error "invalid mnemonic phrase") . mnemonicPhrase
     toList = ListN.unListN . mnemonicPhraseToListN
 
 mnemonicPhrase :: forall mw . ValidMnemonicSentence mw => [String] -> Maybe (MnemonicPhrase mw)

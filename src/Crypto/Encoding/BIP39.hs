@@ -19,6 +19,7 @@ module Crypto.Encoding.BIP39
     , Checksum
     , ValidChecksumSize
     , MnemonicWords
+    , EntropySize
     , toEntropy
     , entropyRaw
     , entropyChecksum
@@ -105,12 +106,13 @@ checksum bs = Checksum $ (hashWith SHA256 bs `BA.index` 0) `shiftR` (8 - csz)
 
 type ValidChecksumSize (ent :: Nat) (csz :: Nat) =
     ( KnownNat csz, NatWithinBound Int csz
-    , Elem csz '[4, 5, 6, 7, 8]
+    , Elem csz '[3, 4, 5, 6, 7, 8]
     , CheckSumBits ent ~ csz
     )
 
 -- | Number of bits of checksum related to a specific entropy size in bits
 type family CheckSumBits (n :: Nat) :: Nat where
+    CheckSumBits 96  = 3
     CheckSumBits 128 = 4
     CheckSumBits 160 = 5
     CheckSumBits 192 = 6
@@ -130,6 +132,8 @@ data Entropy (n :: Nat) = Entropy
   deriving (Show, Eq, Typeable)
 instance NormalForm (Entropy n) where
     toNormalForm (Entropy !_ cs) = toNormalForm cs
+instance Arbitrary (Entropy 96) where
+    arbitrary = fromMaybe (error "arbitrary (Entropy 96)") . toEntropy . BS.pack <$> replicateM 12 arbitrary
 instance Arbitrary (Entropy 128) where
     arbitrary = fromMaybe (error "arbitrary (Entropy 128)") . toEntropy . BS.pack <$> replicateM 16 arbitrary
 instance Arbitrary (Entropy 160) where
@@ -143,11 +147,11 @@ instance Arbitrary (Entropy 256) where
 
 -- | Type Constraint Alias to check a given 'Nat' is valid for an entropy size
 --
--- i.e. it must be one of the following: 128, 160, 192, 224, 256.
+-- i.e. it must be one of the following: 96, 128, 160, 192, 224, 256.
 --
 type ValidEntropySize (n :: Nat) =
     ( KnownNat n, NatWithinBound Int n
-    , Elem n '[128, 160, 192, 224, 256]
+    , Elem n '[96, 128, 160, 192, 224, 256]
     )
 
 -- | Create a specific entropy type of known size from a raw bytestring
@@ -171,17 +175,29 @@ toEntropyCheck bs s = case toEntropy bs of
 
 -- | Number of Words related to a specific entropy size in bits
 type family MnemonicWords (n :: Nat) :: Nat where
+    MnemonicWords 96  = 9
     MnemonicWords 128 = 12
     MnemonicWords 160 = 15
     MnemonicWords 192 = 18
     MnemonicWords 224 = 21
     MnemonicWords 256 = 24
 
+-- | Corresponding entropy size in bits for a given number of words
+type family EntropySize (n :: Nat) :: Nat where
+    EntropySize 9  = 96
+    EntropySize 12 = 128
+    EntropySize 15 = 160
+    EntropySize 18 = 192
+    EntropySize 21 = 224
+    EntropySize 24 = 256
+
+
 -- | Type Constraint Alias to check the entropy size, the number of mnemonic
 -- words and the checksum size is consistent. i.e. that the following is true:
 --
 -- |  entropysize  | checksumsize | entropysize + checksumsize | mnemonicsize |
 -- +---------------+--------------+----------------------------+--------------+
+-- |           96  |            3 |                        99  |           9  |
 -- |          128  |            4 |                       132  |          12  |
 -- |          160  |            5 |                       165  |          15  |
 -- |          192  |            6 |                       198  |          18  |
