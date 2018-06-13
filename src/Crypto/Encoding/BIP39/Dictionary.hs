@@ -122,7 +122,7 @@ instance ValidMnemonicSentence mw => IsList (MnemonicSentence mw) where
 type ValidMnemonicSentence (mw :: Nat) =
     ( KnownNat mw
     , NatWithinBound Int mw
-    , Elem mw '[12, 15, 18, 21, 24]
+    , Elem mw '[9, 12, 15, 18, 21, 24]
     )
 
 -- | Human readable representation of a 'MnemonicSentence'
