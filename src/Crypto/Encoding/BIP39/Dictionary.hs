@@ -133,7 +133,7 @@ newtype MnemonicPhrase (mw :: Nat) = MnemonicPhrase
   deriving (Show, Eq, Ord, Typeable, NormalForm)
 instance ValidMnemonicSentence mw => IsList (MnemonicPhrase mw) where
     type Item (MnemonicPhrase mw) = String
-    fromList = fromMaybe (error "invliad mnemonic phrase") . mnemonicPhrase
+    fromList = fromMaybe (error "invalid mnemonic phrase") . mnemonicPhrase
     toList = ListN.unListN . mnemonicPhraseToListN
 
 mnemonicPhrase :: forall mw . ValidMnemonicSentence mw => [String] -> Maybe (MnemonicPhrase mw)
