@@ -24,7 +24,8 @@ import Crypto.Encoding.BIP39.English (english)
 
 tests :: Test
 tests = Group "BIP39"
-    [ testsP @128 @12 @4 Proxy
+    [ testsP @96  @9  @3 Proxy
+    , testsP @128 @12 @4 Proxy
     , testsP @160 @15 @5 Proxy
     , testsP @192 @18 @6 Proxy
     , testsP @224 @21 @7 Proxy
@@ -53,6 +54,7 @@ data TestVector = TestVector
 runTest :: TestVector -> Test
 runTest tv =
     case BS.length (testVectorInput tv) * 8 of
+        96  -> go (Proxy @96)
         128 -> go (Proxy @128)
         160 -> go (Proxy @160)
         192 -> go (Proxy @192)
