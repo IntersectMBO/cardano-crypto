@@ -16,7 +16,6 @@
 {-# LANGUAGE GADTs                 #-}
 module Crypto.ECC.Ed25519BIP32 where
 
--- import qualified Crypto.Hash as C (hashWith, Digest, SHA512, SHA256, HashAlgorithm)
 import qualified Crypto.Hash as C (SHA512, SHA256)
 import qualified Crypto.MAC.HMAC as C
 import qualified Data.ByteArray as B
@@ -28,16 +27,12 @@ import qualified Crypto.Math.Edwards25519 as ED25519
 import           Data.Type.Bool
 import           Data.Type.Equality
 import           GHC.TypeLits
--- import           GHC.Exts (Constraint)
 import           Data.Function (on)
 import           Unsafe.Coerce (unsafeCoerce)
 
 import           Crypto.Math.Bits
 import           Crypto.Math.Bytes (Bytes)
 import qualified Crypto.Math.Bytes as Bytes
-
--- | Simple Tag to prevent mixing different semantics stuff
-newtype Tagged (tag :: k) a = Tagged a
 
 -- | A Master secret is a 256 bits random quantity
 type MasterSecret = FBits 256
@@ -153,11 +148,6 @@ type family DerivationTag (ty :: DerivationType) (material :: DerivationMaterial
     DerivationTag 'Soft 'KeyMaterial       = 0x2
     DerivationTag 'Soft 'ChainCodeMaterial = 0x3
 
-makeRootSecret :: MasterSecret -> Maybe Key
-makeRootSecret _ =
-    undefined
-    --
-
 -- | Check if the left half is valid
 leftHalfValid :: FBits 256 -> Bool
 leftHalfValid v =
@@ -193,21 +183,6 @@ type family BitsToHashScheme (n :: Nat) where
 
 type ValidTag tag = (0 <= tag, tag <= 3)
 
-{-
-hash :: forall n i hashAlg .
-        (C.HashAlgorithm hashAlg, BitsToHashScheme n ~ hashAlg, SizeValid i, SizeValid n)
-     => FBits i -> Hash n
-hash i = maybe (error "hash") Hash
-       $ binToFBits
-       $ BS.unpack
-       $ B.convert
-       $ f
-       $ binFromFBits i
-  where
-    f :: [Word8] -> C.Digest hashAlg
-    f = C.hashWith (undefined :: hashAlg) . BS.pack
-    -}
-
 -- | Compute the HMAC-SHA512 using the ChainCode as the key
 fcp :: forall tag idx deriveType deriveMaterial
      . ( KnownNat (DerivationTag deriveType deriveMaterial)
@@ -225,7 +200,6 @@ fcp :: forall tag idx deriveType deriveMaterial
     -> HMAC_SHA512
 fcp _ _ pidx c _ input =
     hmacSHA512 key `Bytes.packSome` (Bytes.unpack tagValue ++ input ++ Bytes.unpack idx)
-    -- hmacSHA512 key (Bytes.unpack tagValue ++ input ++ Bytes.unpack idx)
   where
     key = unChainCode c
 
@@ -246,7 +220,6 @@ class GetDerivationMaterial (dtype :: DerivationType) mat where
 instance GetDerivationMaterial 'Soft Key where
     getDerivationMaterial p key = getDerivationMaterial p (fst $ toPublic key)
 instance GetDerivationMaterial 'Hard Key where
-    --getDerivationMaterial _ (kl,kr,_) = Bytes.unpack $ Bytes.fromBits Bytes.LittleEndian (kl `append` kr)
     getDerivationMaterial _ (kl,kr,_) =
         Bytes.unpack $ Bytes.append (Bytes.fromBits Bytes.LittleEndian kl)
                                     (Bytes.fromBits Bytes.LittleEndian kr)
