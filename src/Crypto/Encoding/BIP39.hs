@@ -54,6 +54,9 @@ module Crypto.Encoding.BIP39
       ConsistentEntropy
     , CheckSumBits
     , Elem
+
+    , -- * Errors
+      DictionaryError(..)
     ) where
 
 import Prelude ((-), (*), (+), div, divMod, (^), fromIntegral)
@@ -70,7 +73,7 @@ import           Basement.Imports
 
 import           Foundation.Check
 
-import           Control.Monad (replicateM)
+import           Control.Monad (replicateM, (<=<))
 import           Data.Bits
 import           Data.Maybe (fromMaybe)
 import           Data.List (reverse, intersperse)
@@ -356,9 +359,9 @@ checkMnemonicPhrase dic (MnemonicPhrase ln) =
 mnemonicPhraseToMnemonicSentence :: forall mw . ValidMnemonicSentence mw
                                  => Dictionary
                                  -> MnemonicPhrase mw
-                                 -> MnemonicSentence mw
-mnemonicPhraseToMnemonicSentence dic (MnemonicPhrase ln) = MnemonicSentence $
-    ListN.map (dictionaryWordToIndex dic) ln
+                                 -> Either DictionaryError (MnemonicSentence mw)
+mnemonicPhraseToMnemonicSentence dic (MnemonicPhrase ln) = MnemonicSentence <$>
+    ListN.mapM (dictionaryWordToIndex dic) ln
 
 -- | convert the given generic 'MnemonicSentence' to a human readable
 -- 'MnemonicPhrase' targetting the language of the given 'Dictionary'.
@@ -392,9 +395,9 @@ translateTo :: forall mw . ValidMnemonicSentence mw
             => Dictionary -- ^ source dictionary
             -> Dictionary -- ^ destination dictionary
             -> MnemonicPhrase mw
-            -> MnemonicPhrase mw
-translateTo dicSrc dicDst (MnemonicPhrase ln) = MnemonicPhrase $
-    ListN.map (dictionaryIndexToWord dicDst . dictionaryWordToIndex dicSrc) ln
+            -> Either DictionaryError (MnemonicPhrase mw)
+translateTo dicSrc dicDst (MnemonicPhrase ln) = MnemonicPhrase <$>
+    ListN.mapM (return . dictionaryIndexToWord dicDst <=< dictionaryWordToIndex dicSrc) ln
 
 ------------------------------------------------------------------------
 -- Helpers

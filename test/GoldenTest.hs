@@ -22,6 +22,7 @@ import Foundation.String
 import Foundation.String.Read (readIntegral)
 
 import Data.List (elemIndex)
+import Control.Arrow (left)
 
 import Inspector
 import qualified Inspector.TestVector.Types as Type
@@ -206,6 +207,6 @@ instance ValidMnemonicSentence n => Inspectable (Mnemonic 'English n) where
         strs <- words <$> parser v
         Mnemonic <$> case mnemonicPhrase @n strs of
             Nothing -> Left $ "Expected " <> show n <> " words. But received " <> show (length strs) <> " words."
-            Just l  -> pure $ mnemonicPhraseToMnemonicSentence english l
+            Just l  -> left show $ mnemonicPhraseToMnemonicSentence english l
       where
         n = natVal @n Proxy

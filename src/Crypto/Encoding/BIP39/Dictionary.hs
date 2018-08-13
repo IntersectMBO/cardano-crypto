@@ -17,6 +17,8 @@ module Crypto.Encoding.BIP39.Dictionary
     , WordIndex
     , wordIndex
     , unWordIndex
+
+    , DictionaryError(..)
     ) where
 
 import           Basement.String (String)
@@ -35,7 +37,7 @@ data Dictionary = Dictionary
     { dictionaryIndexToWord :: WordIndex -> String
       -- ^ This function will retrieve the mnemonic word associated to the
       -- given 'WordIndex'.
-    , dictionaryWordToIndex :: String -> WordIndex
+    , dictionaryWordToIndex :: String -> Either DictionaryError WordIndex
       -- ^ This function will retrieve the 'WordIndex' from a given mnemonic
       -- word.
     , dictionaryTestWord :: String -> Bool
@@ -76,4 +78,12 @@ wordIndex :: Offset String -> WordIndex
 wordIndex w = case tryFrom w of
     Nothing -> error ("Error: word index should be between 0 to 2047. " <> show w)
     Just wi -> wi
+
+-- -------------------------------------------------------------------------- --
+-- Errors
+-- -------------------------------------------------------------------------- --
+
+data DictionaryError
+    = ErrInvalidDictionaryWord String
+    deriving (Show)
 
