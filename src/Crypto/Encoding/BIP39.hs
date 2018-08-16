@@ -59,6 +59,7 @@ module Crypto.Encoding.BIP39
     , -- * Errors
       DictionaryError(..)
     , EntropyError(..)
+    , MnemonicWordsError(..)
     ) where
 
 import Prelude ((-), (*), (+), div, divMod, (^), fromIntegral)
@@ -78,7 +79,7 @@ import           Foundation.Check
 import           Control.Monad (replicateM, (<=<))
 import           Data.Bits
 import           Data.Maybe (fromMaybe)
-import           Data.List (reverse, intersperse)
+import           Data.List (reverse, intersperse, length)
 import           Data.Kind (Constraint)
 import           Data.ByteArray (ByteArrayAccess, ByteArray)
 import qualified Data.ByteArray as BA
@@ -340,11 +341,14 @@ newtype MnemonicPhrase (mw :: Nat) = MnemonicPhrase
   deriving (Show, Eq, Ord, Typeable, NormalForm)
 instance ValidMnemonicSentence mw => IsList (MnemonicPhrase mw) where
     type Item (MnemonicPhrase mw) = String
-    fromList = fromMaybe (error "invalid mnemonic phrase") . mnemonicPhrase
+    fromList = fromRight (error "invalid mnemonic phrase") . mnemonicPhrase
     toList = ListN.unListN . mnemonicPhraseToListN
 
-mnemonicPhrase :: forall mw . ValidMnemonicSentence mw => [String] -> Maybe (MnemonicPhrase mw)
-mnemonicPhrase l = MnemonicPhrase <$> ListN.toListN l
+mnemonicPhrase :: forall mw . ValidMnemonicSentence mw => [String] -> Either MnemonicWordsError (MnemonicPhrase mw)
+mnemonicPhrase l = MnemonicPhrase <$> maybe
+    (Left $ ErrWrongNumberOfWords (length l) (natValInt @mw Proxy))
+     Right
+    (ListN.toListN l)
 {-# INLINABLE mnemonicPhrase #-}
 
 -- | check a given 'MnemonicPhrase' is valid for the given 'Dictionary'
@@ -429,4 +433,10 @@ data EntropyError csz
     | ErrInvalidEntropyChecksum
           (Checksum csz)  --  Actual checksum
           (Checksum csz)  --  Expected checksum
+    deriving (Show)
+
+data MnemonicWordsError
+    = ErrWrongNumberOfWords
+          Int -- Actual number of words
+          Int -- Expected number of words
     deriving (Show)

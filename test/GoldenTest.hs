@@ -206,8 +206,7 @@ instance ValidMnemonicSentence n => Inspectable (Mnemonic 'English n) where
     builder (Mnemonic l) = Value.String $ mnemonicSentenceToString english l
     parser v = do
         strs <- words <$> parser v
-        Mnemonic <$> case mnemonicPhrase @n strs of
-            Nothing -> Left $ "Expected " <> show n <> " words. But received " <> show (length strs) <> " words."
-            Just l  -> left show $ mnemonicPhraseToMnemonicSentence english l
+        phrase <- left show $ mnemonicPhrase @n strs
+        left show $ Mnemonic <$> mnemonicPhraseToMnemonicSentence english phrase
       where
         n = natVal @n Proxy
