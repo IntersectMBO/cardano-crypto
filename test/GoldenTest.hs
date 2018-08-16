@@ -36,6 +36,7 @@ import           Cardano.Crypto.Encoding.Seed
 import           Cardano.Crypto.Encoding.BIP39
 import           Crypto.Encoding.BIP39.English (english)
 import qualified Cardano.Crypto.Praos.VRF as VRF
+import           Cardano.Internal.Compat (fromRight)
 
 import Test.Orphans
 
@@ -156,7 +157,7 @@ goldenBIP39 = group $ do
             -> (Entropy n, Seed)
     runTest p (Mnemonic mw) pw  =
         let -- 1. retrieve the entroy
-            entropy = fromMaybe (error "invalid mnemonic phrase")
+            entropy = fromRight (error "invalid mnemonic phrase")
                                 (wordsToEntropy @n mw)
             -- 2. retrieve the seed
             seed = sentenceToSeed @mw mw english pw

@@ -42,6 +42,7 @@ module Crypto.Encoding.BIP39
     , mnemonicPhraseToMnemonicSentence
     , mnemonicSentenceToMnemonicPhrase
     , mnemonicSentenceToString
+    , mnemonicSentenceToListN
     , mnemonicPhraseToString
     , translateTo
     , -- ** Dictionary
@@ -57,6 +58,7 @@ module Crypto.Encoding.BIP39
 
     , -- * Errors
       DictionaryError(..)
+    , EntropyError(..)
     ) where
 
 import Prelude ((-), (*), (+), div, divMod, (^), fromIntegral)
@@ -93,6 +95,7 @@ import           Crypto.Number.Serialize (os2ip, i2ospOf_)
 import qualified Crypto.KDF.PBKDF2 as PBKDF2
 
 import           Crypto.Encoding.BIP39.Dictionary
+import           Cardano.Internal.Compat (fromRight)
 
 -- -------------------------------------------------------------------------- --
 -- Entropy
@@ -139,17 +142,17 @@ data Entropy (n :: Nat) = Entropy
 instance NormalForm (Entropy n) where
     toNormalForm (Entropy !_ cs) = toNormalForm cs
 instance Arbitrary (Entropy 96) where
-    arbitrary = fromMaybe (error "arbitrary (Entropy 96)") . toEntropy . BS.pack <$> replicateM 12 arbitrary
+    arbitrary = fromRight (error "arbitrary (Entropy 96)") . toEntropy . BS.pack <$> replicateM 12 arbitrary
 instance Arbitrary (Entropy 128) where
-    arbitrary = fromMaybe (error "arbitrary (Entropy 128)") . toEntropy . BS.pack <$> replicateM 16 arbitrary
+    arbitrary = fromRight (error "arbitrary (Entropy 128)") . toEntropy . BS.pack <$> replicateM 16 arbitrary
 instance Arbitrary (Entropy 160) where
-    arbitrary = fromMaybe (error "arbitrary (Entropy 160)") . toEntropy . BS.pack <$> replicateM 20 arbitrary
+    arbitrary = fromRight (error "arbitrary (Entropy 160)") . toEntropy . BS.pack <$> replicateM 20 arbitrary
 instance Arbitrary (Entropy 192) where
-    arbitrary = fromMaybe (error "arbitrary (Entropy 192)") . toEntropy . BS.pack <$> replicateM 24 arbitrary
+    arbitrary = fromRight (error "arbitrary (Entropy 192)") . toEntropy . BS.pack <$> replicateM 24 arbitrary
 instance Arbitrary (Entropy 224) where
-    arbitrary = fromMaybe (error "arbitrary (Entropy 224)") . toEntropy . BS.pack <$> replicateM 28 arbitrary
+    arbitrary = fromRight (error "arbitrary (Entropy 224)") . toEntropy . BS.pack <$> replicateM 28 arbitrary
 instance Arbitrary (Entropy 256) where
-    arbitrary = fromMaybe (error "arbitrary (Entropy 256)") . toEntropy . BS.pack <$> replicateM 32 arbitrary
+    arbitrary = fromRight (error "arbitrary (Entropy 256)") . toEntropy . BS.pack <$> replicateM 32 arbitrary
 
 -- | Type Constraint Alias to check a given 'Nat' is valid for an entropy size
 --
@@ -164,20 +167,23 @@ type ValidEntropySize (n :: Nat) =
 toEntropy :: forall n csz ba
            . (ValidEntropySize n, ValidChecksumSize n csz, ByteArrayAccess ba)
           => ba
-          -> Maybe (Entropy n)
+          -> Either (EntropyError csz) (Entropy n)
 toEntropy bs
-    | BA.length bs*8 == natValInt (Proxy @n) = Just $ Entropy (BA.convert bs) (checksum @csz bs)
-    | otherwise                              = Nothing
+    | actual == expected = Right $ Entropy (BA.convert bs) (checksum @csz bs)
+    | otherwise          = Left  $ ErrInvalidEntropyLength actual expected
+  where
+    actual   = BA.length bs*8
+    expected = natValInt (Proxy @n)
 
 toEntropyCheck :: forall n csz ba
                 . (ValidEntropySize n, ValidChecksumSize n csz, ByteArrayAccess ba)
                => ba
                -> Checksum csz
-               -> Maybe (Entropy n)
+               -> Either (EntropyError csz) (Entropy n)
 toEntropyCheck bs s = case toEntropy bs of
-    Nothing -> Nothing
-    Just e@(Entropy _ cs) | cs == s   -> Just e
-                          | otherwise -> Nothing
+    Left err -> Left err
+    Right e@(Entropy _ cs) | cs == s   -> Right e
+                           | otherwise -> Left $ ErrInvalidEntropyChecksum cs s
 
 -- | Number of Words related to a specific entropy size in bits
 type family MnemonicWords (n :: Nat) :: Nat where
@@ -230,7 +236,7 @@ type ConsistentEntropy ent mw csz =
 wordsToEntropy :: forall ent csz mw
                 . ConsistentEntropy ent mw csz
                => MnemonicSentence mw
-               -> Maybe (Entropy ent)
+               -> Either (EntropyError csz) (Entropy ent)
 wordsToEntropy (MnemonicSentence ms) =
     let -- we don't revese the list here, we know that the first word index
         -- is the highest first 11 bits of the entropy.
@@ -411,3 +417,16 @@ type family Elem (e :: Nat) (l :: [Nat]) :: Constraint where
              ':<>: 'Text " not elements of valids values")
     Elem e (e ': _) = ()
     Elem e (_ ': xs) = Elem e xs
+
+-- -------------------------------------------------------------------------- --
+-- Errors
+-- -------------------------------------------------------------------------- --
+
+data EntropyError csz
+    = ErrInvalidEntropyLength
+          Int             --  Actual length in bits
+          Int             --  Expected length in bits
+    | ErrInvalidEntropyChecksum
+          (Checksum csz)  --  Actual checksum
+          (Checksum csz)  --  Expected checksum
+    deriving (Show)

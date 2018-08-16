@@ -114,8 +114,8 @@ scramble (ScrambleIV iv) e passphrase =
                     salt
         ee = xor otp (entropyRaw e)
      in case toEntropy @entropysizeO (iv <> ee) of
-            Nothing -> error "scramble: the function BIP39.toEntropy returned an unexpected error"
-            Just e' -> e'
+            Left err -> error $ "scramble: the function BIP39.toEntropy returned an error: " <> show err
+            Right e' -> e'
   where
     entropySize = fromIntegral (natVal (Proxy @entropysizeI)) `div` 8
 
@@ -136,8 +136,8 @@ scrambleMnemonic _ iv mw passphrase =
     $ scramble @entropysizeI @entropysizeO iv entropy passphrase
   where
     entropy = case wordsToEntropy @entropysizeI mw of
-        Nothing -> error "mnemonic to entropy failed"
-        Just e  -> e
+        Left  err -> error $ "mnemonic to entropy failed: " <> show err
+        Right e   -> e
 
 -- |
 -- The reverse operation of 'scramble'
@@ -166,8 +166,8 @@ unscramble :: forall entropysizeI entropysizeO mnemonicsize scramblesize csI csO
 unscramble e passphrase =
     let ee = xor otp eraw :: ByteString
      in case toEntropy @entropysizeO ee of
-         Nothing -> error "unscramble: the function BIP39.toEntropy returned an unexpected error"
-         Just e' -> e'
+      Left err -> error $ "unscramble: the function BIP39.toEntropy returned an error: " <> show err
+      Right e' -> e'
   where
     (iv, eraw) = B.splitAt ivSizeBytes (entropyRaw e) :: (ByteString, ByteString)
     salt = iv

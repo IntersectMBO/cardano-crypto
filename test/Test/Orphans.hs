@@ -148,8 +148,8 @@ instance (BIP39.ValidEntropySize n, BIP39.ValidChecksumSize n csz) => Inspectabl
     parser v = do
         bs <- parser v
         case BIP39.toEntropy (bs :: Bytes) of
-            Nothing -> Left "Expected `Entropy' not the correct size"
-            Just r  -> pure r
+            Left _  -> Left "Expected `Entropy' not the correct size"
+            Right r -> pure r
 
 instance Inspectable BIP39.Seed where
     documentation _ = "BIP39 Seed"
