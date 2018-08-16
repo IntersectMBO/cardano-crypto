@@ -10,11 +10,14 @@ import Basement.Sized.Vect
 import Data.Maybe (fromMaybe)
 import qualified Data.List
 
-import Crypto.Encoding.BIP39.Dictionary (Dictionary (..), WordIndex, unWordIndex)
+import Crypto.Encoding.BIP39.Dictionary (Dictionary (..), WordIndex,
+                                         unWordIndex, DictionaryError (..))
 
 english :: Dictionary
 english = Dictionary
-    { dictionaryWordToIndex = fromMaybe undefined . flip Data.List.lookup list
+    { dictionaryWordToIndex = \word -> case Data.List.lookup word list of
+                                           Just x  -> Right x
+                                           Nothing -> Left $ ErrInvalidDictionaryWord word
     , dictionaryTestWord = flip Data.List.elem wordList
     , dictionaryIndexToWord = index words . unWordIndex
     , dictionaryWordSeparator = " "

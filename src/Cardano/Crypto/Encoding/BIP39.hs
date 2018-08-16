@@ -29,8 +29,8 @@ cardanoSlSeed :: forall n csz mw . ConsistentEntropy n mw csz
               -> Maybe Seed
 cardanoSlSeed _ mw =
     case wordsToEntropy @n @csz @mw mw of
-        Nothing -> Nothing
-        Just e -> Just $ BA.convert $ toCbor $ blake2b $ toCbor (entropyRaw e)
+        Left _ -> Nothing
+        Right e -> Just $ BA.convert $ toCbor $ blake2b $ toCbor (entropyRaw e)
   where blake2b :: ByteString -> Digest Blake2b_256
         blake2b = hash
 

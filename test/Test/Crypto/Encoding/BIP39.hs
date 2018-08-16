@@ -22,6 +22,8 @@ import qualified Data.ByteString as BS
 import Crypto.Encoding.BIP39
 import Crypto.Encoding.BIP39.English (english)
 
+import Cardano.Internal.Compat (fromRight)
+
 tests :: Test
 tests = Group "BIP39"
     [ testsP @96  @9  @3 Proxy
@@ -38,7 +40,7 @@ testsP :: forall ent mw csz . (Arbitrary (Entropy ent), ConsistentEntropy ent mw
        -> Test
 testsP _ = Group (show (natVal (Proxy @ent)))
     [ Property "wordsToEntropy . entropyToWords == id" $ \(e :: Entropy ent) ->
-        wordsToEntropy @ent (entropyToWords e) === Just e
+        (fromRight undefined . wordsToEntropy @ent) (entropyToWords e) === e
     ]
 
 testsVector :: Test
@@ -68,16 +70,16 @@ runTest tv =
        => Proxy n -> Test
     go proxyN = CheckPlan ("test " <> show (natVal proxyN)) $
         case toEntropy @n (testVectorInput tv) of
-            Nothing -> error "entropy generation error"
-            Just e -> do
+            Left err -> error $ show err
+            Right e -> do
                 let w = entropyToWords e
-                    e' = wordsToEntropy @n w
+                    e' = fromRight undefined $ wordsToEntropy @n w
                     seed = sentenceToSeed w english "TREZOR"
                     words = mnemonicSentenceToString @mw english w
                 validate "phrases are equal" (words === testVectorWords tv)
                 validate "words equal" (toList w === testVectorWIndex' tv)
                 validate "seed equal" (seed === testVectorSeed tv)
-                validate "entropy equal" (Just e === e')
+                validate "entropy equal" (e === e')
 
 testVectors :: [TestVector]
 testVectors =

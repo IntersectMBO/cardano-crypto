@@ -22,6 +22,7 @@ import Foundation.String
 import Foundation.String.Read (readIntegral)
 
 import Data.List (elemIndex)
+import Control.Arrow (left)
 
 import Inspector
 import qualified Inspector.TestVector.Types as Type
@@ -35,6 +36,7 @@ import           Cardano.Crypto.Encoding.Seed
 import           Cardano.Crypto.Encoding.BIP39
 import           Crypto.Encoding.BIP39.English (english)
 import qualified Cardano.Crypto.Praos.VRF as VRF
+import           Cardano.Internal.Compat (fromRight)
 
 import Test.Orphans
 
@@ -155,7 +157,7 @@ goldenBIP39 = group $ do
             -> (Entropy n, Seed)
     runTest p (Mnemonic mw) pw  =
         let -- 1. retrieve the entroy
-            entropy = fromMaybe (error "invalid mnemonic phrase")
+            entropy = fromRight (error "invalid mnemonic phrase")
                                 (wordsToEntropy @n mw)
             -- 2. retrieve the seed
             seed = sentenceToSeed @mw mw english pw
@@ -204,8 +206,7 @@ instance ValidMnemonicSentence n => Inspectable (Mnemonic 'English n) where
     builder (Mnemonic l) = Value.String $ mnemonicSentenceToString english l
     parser v = do
         strs <- words <$> parser v
-        Mnemonic <$> case mnemonicPhrase @n strs of
-            Nothing -> Left $ "Expected " <> show n <> " words. But received " <> show (length strs) <> " words."
-            Just l  -> pure $ mnemonicPhraseToMnemonicSentence english l
+        phrase <- left show $ mnemonicPhrase @n strs
+        left show $ Mnemonic <$> mnemonicPhraseToMnemonicSentence english phrase
       where
         n = natVal @n Proxy
