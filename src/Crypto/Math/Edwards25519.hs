@@ -20,6 +20,7 @@
 --
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE CPP #-}
 
 module Crypto.Math.Edwards25519
     (
@@ -50,7 +51,11 @@ import           Crypto.Hash
 import           Crypto.Number.ModArithmetic
 import           Crypto.Number.Serialize
 import           Data.Bits
+#if MIN_VERSION_memory(0,14,18)
+import qualified Data.ByteArray              as B hiding (append, reverse)
+#else
 import qualified Data.ByteArray              as B hiding (append)
+#endif
 import           Data.ByteString             (ByteString)
 import qualified Data.ByteString             as B (append, reverse)
 import           Data.Hashable               (Hashable)
