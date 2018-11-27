@@ -42,6 +42,7 @@ import Test.Orphans
 
 main :: IO ()
 main = defaultTest $ do
+    goldenSignatureEd25519
     goldenBIP39
     goldenHDWallet
     goldenPaperwallet
@@ -164,6 +165,18 @@ goldenBIP39 = group $ do
          in (entropy, seed)
 
 -- -------------------------------------------------------------------------- --
+
+type SignatureEd25519
+    = "cardano" :> "crypto" :> "signature-ed25519"
+      :> Payload "xpub" XPub
+      :> Payload "data" Bytes
+      :> Payload "signature" XSignature
+      :> Payload "valid" Bool
+
+goldenSignatureEd25519 :: GoldenT ()
+goldenSignatureEd25519 = golden (Proxy :: Proxy SignatureEd25519) verify
+
+-- -------------------------------------------------------------------------- --
 --                          Helpers                                           --
 -- -------------------------------------------------------------------------- --
 
@@ -210,3 +223,10 @@ instance ValidMnemonicSentence n => Inspectable (Mnemonic 'English n) where
         left show $ Mnemonic <$> mnemonicPhraseToMnemonicSentence english phrase
       where
         n = natVal @n Proxy
+
+instance Arbitrary XSignature where
+    arbitrary = undefined
+instance Arbitrary Bytes where
+    arbitrary = undefined
+instance Arbitrary XPub where
+    arbitrary = undefined
