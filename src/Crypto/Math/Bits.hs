@@ -31,7 +31,7 @@ data FBits (n :: Nat) = FBits { unFBits :: Natural }
 
 data FBitsK = FBitsK (forall n . (KnownNat n, SizeValid n) => FBits n)
 
-type SizeValid n = (KnownNat n, 1 <= n)
+type SizeValid (n :: Nat) = (KnownNat n, 1 <= n)
 
 toFBits :: SizeValid n => Natural -> FBits n
 toFBits nat = FBits nat .&. allOne
@@ -81,7 +81,8 @@ allOne :: forall n . SizeValid n => FBits n
 allOne = FBits (2 ^ n - 1)
   where n = natVal (Proxy :: Proxy n)
 
-splitHalf :: forall m n . (SizeValid n, (n * 2) ~ m) => FBits m -> (FBits n, FBits n)
+splitHalf :: forall (m :: Nat) (n :: Nat) . (SizeValid n, (n GHC.TypeLits.* 2) ~ m)
+          => FBits m -> (FBits n, FBits n)
 splitHalf (FBits a) = (FBits (a `shiftR` n), toFBits a)
   where n = fromIntegral $ natVal (Proxy :: Proxy n)
 
@@ -89,7 +90,7 @@ splitHalf (FBits a) = (FBits (a `shiftR` n), toFBits a)
 -- element.
 --
 -- e.g. append (0x1 :: FBits 1) (0x70 :: FBits 7) = 0xf0 :: FBits 8
-append :: forall m n r . (SizeValid m, SizeValid n, SizeValid r, (m + n) ~ r)
+append :: forall (m :: Nat) (n :: Nat) r . (SizeValid m, SizeValid n, SizeValid r, (m + n) ~ r)
        => FBits n -> FBits m -> FBits r
 append (FBits a) (FBits b) =
     FBits ((a `shiftL` m) .|.  b)

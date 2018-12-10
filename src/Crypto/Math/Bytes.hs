@@ -66,7 +66,7 @@ trace cmd b@(Bytes l) = Trace.trace (cmd ++ ": " ++ concatMap toHex l) b
           | otherwise = toEnum (fromEnum 'a' + fromIntegral (i-10))
 
 -- | transform bytes into bits with a specific endianness
-toBits :: Endian -> Bytes n -> FBits (n * 8)
+toBits :: Endian -> Bytes n -> FBits (n GHC.TypeLits.* 8)
 toBits endian (Bytes l) = FBits $
     foldl' (\acc i -> (acc `shiftL` 8) + fromIntegral i) 0 (fixupBytes endian l)
 
@@ -86,7 +86,7 @@ fromBits endian (unFBits -> allBits) = Bytes $ loop [] (0 :: Word) allBits
     divMod8 i = let (q,m) = i `divMod` 256 in (q,fromIntegral m)
 
 
-splitHalf :: forall m n . (KnownNat n, (n * 2) ~ m) => Bytes m -> (Bytes n, Bytes n)
+splitHalf :: forall m n . (KnownNat n, (n GHC.TypeLits.* 2) ~ m) => Bytes m -> (Bytes n, Bytes n)
 splitHalf (Bytes l) = (Bytes l1, Bytes l2)
   where
     (l1, l2) = splitAt n l

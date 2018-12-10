@@ -301,7 +301,7 @@ step2 z = (8 * zeroExtendedZl, Bytes.toBits Bytes.LittleEndian zRight)
     zl :: Bytes 28 -- only take 28 bytes
     zl = Bytes.take zLeft32
 
-    zeroExtender :: FBits (4*8) -- re-extend by 4 bytes
+    zeroExtender :: FBits (4 GHC.TypeLits.* 8) -- re-extend by 4 bytes
     zeroExtender = 0
 
 -- | Serialized index
