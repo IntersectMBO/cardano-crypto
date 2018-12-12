@@ -163,7 +163,7 @@ deriveXPrv :: ByteArrayAccess passPhrase => DerivationScheme -> passPhrase -> XP
 deriveXPrv ds passPhrase (XPrv ekey) n =
     XPrv (encryptedDerivePrivate ds ekey passPhrase n)
 
--- | Derive a child extended private key from an extended private key
+-- | Derive a child extended public key from an extended public key
 deriveXPub :: DerivationScheme -> XPub -> Word32 -> Maybe XPub
 deriveXPub ds (XPub pub (ChainCode cc)) n
     | n >= 0x8000000 = Nothing
