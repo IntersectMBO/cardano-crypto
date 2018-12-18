@@ -61,6 +61,8 @@ library
   default-extensions:  GeneralizedNewtypeDeriving
   ghc-options:         -Wall
   cc-options:          -Wall -Wno-unused-function
+  if impl(ghc >= 8.6)
+    default-extensions: NoStarIsType
 
 test-suite cardano-crypto-test
   type:                exitcode-stdio-1.0
