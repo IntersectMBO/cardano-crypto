@@ -21,6 +21,7 @@ import qualified Crypto.MAC.HMAC as C
 import qualified Data.ByteArray as B
 import qualified Data.ByteString as BS
 import           Data.Bits
+import           Data.Kind (Type)
 import           Data.Word
 import           Data.Proxy
 import qualified Crypto.Math.Edwards25519 as ED25519
@@ -89,15 +90,15 @@ type MinHardIndex = 0x80000000
 type MaxSoftIndex = MinHardIndex - 1
 type MinSoftIndex = 0
 
-data ValidIndex :: Nat -> * where
+data ValidIndex :: Nat -> Type where
     IsValidIndex    :: (ValidDerivationIndex n :~: 'True) -> ValidIndex n
     IsNotValidIndex :: (ValidDerivationIndex n :~: 'False) -> ValidIndex n
 
-data ValidHardIndex :: Nat -> * where
+data ValidHardIndex :: Nat -> Type where
     IsValidHardIndex    :: (ValidDerivationHardIndex n :~: 'True) -> ValidHardIndex n
     IsNotValidHardIndex :: (ValidDerivationHardIndex n :~: 'False) -> ValidHardIndex n
 
-data ValidSoftIndex :: Nat -> * where
+data ValidSoftIndex :: Nat -> Type where
     IsValidSoftIndex    :: (ValidDerivationSoftIndex n :~: 'True) -> ValidSoftIndex n
     IsNotValidSoftIndex :: (ValidDerivationSoftIndex n :~: 'False) -> ValidSoftIndex n
 
