@@ -3,10 +3,9 @@
 module Encoding (setEncoding) where
 
 #if mingw32_HOST_OS
-import           System.IO (IO, hSetEncoding, stdout, stderr, utf8)
+import           System.IO (hSetEncoding, stdout, stderr, utf8)
 #endif
 
-setEncoding :: IO ()
 #if mingw32_HOST_OS
 setEncoding = do
   hSetEncoding stdout utf8
