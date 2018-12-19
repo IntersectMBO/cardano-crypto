@@ -40,8 +40,12 @@ import           Cardano.Internal.Compat (fromRight)
 
 import Test.Orphans
 
+import           Encoding (setEncoding)
+
 main :: IO ()
-main = defaultTest $ do
+main = do
+  setEncoding
+  defaultTest $ do
     goldenSignatureEd25519
     goldenBIP39
     goldenHDWallet

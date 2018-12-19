@@ -113,6 +113,7 @@ executable golden-tests
   hs-source-dirs:      test
   main-is:             GoldenTest.hs
   other-modules:       Test.Orphans
+                     , Encoding
   if flag(golden-tests-exe)
     build-depends:     inspector
     buildable:         True
