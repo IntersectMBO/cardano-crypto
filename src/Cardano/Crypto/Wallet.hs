@@ -166,8 +166,8 @@ deriveXPrv ds passPhrase (XPrv ekey) n =
 -- | Derive a child extended public key from an extended public key
 deriveXPub :: DerivationScheme -> XPub -> Word32 -> Maybe XPub
 deriveXPub ds (XPub pub (ChainCode cc)) n
-    | n >= 0x8000000 = Nothing
-    | otherwise      = Just $ uncurry XPub $ second ChainCode $ encryptedDerivePublic ds (pub,cc) n
+    | n >= 0x80000000 = Nothing
+    | otherwise       = Just $ uncurry XPub $ second ChainCode $ encryptedDerivePublic ds (pub,cc) n
 
 sign :: (ByteArrayAccess passPhrase, ByteArrayAccess msg)
      => passPhrase
