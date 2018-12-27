@@ -7,6 +7,7 @@
 {-# LANGUAGE Rank2Types          #-}
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE ViewPatterns        #-}
+{-# LANGUAGE NoStarIsType        #-}
 module Crypto.Math.Bytes
     ( Bytes
     , Endian(..)
