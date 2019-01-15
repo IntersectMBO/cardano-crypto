@@ -7,6 +7,7 @@ xPub = "91a8823ef68a6bd7b11530746eeac1cd0c5a286d0e3ae1d092e146a9afd93ab562e9d459
 data_to_sign = "Hello World"
 path = []
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "satisfy issue lottery twice mimic sword select raw twin ball harsh wide chat machine keep"
 
@@ -19,6 +20,7 @@ xPub = "66fcbb90aec12c69994ccfa2af7d2ef855fb280bac263a85c7b7cf7aa3f4895955f4ecfa
 data_to_sign = "Hello World"
 path = [ 2147483648 ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "satisfy issue lottery twice mimic sword select raw twin ball harsh wide chat machine keep"
 
@@ -31,6 +33,7 @@ xPub = "c3bc2a476022a19401408b1646f6f356b7f24d83938c57cecf2b95beecb6d0e6e92c03cc
 data_to_sign = "Hello World"
 path = [ 2147483649 ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "satisfy issue lottery twice mimic sword select raw twin ball harsh wide chat machine keep"
 
@@ -45,6 +48,7 @@ path = [ 2147483648
        , 2147483649
        ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "satisfy issue lottery twice mimic sword select raw twin ball harsh wide chat machine keep"
 
@@ -60,6 +64,7 @@ path = [ 2147483648
        , 2147483650
        ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "satisfy issue lottery twice mimic sword select raw twin ball harsh wide chat machine keep"
 
@@ -76,6 +81,7 @@ path = [ 2147483648
        , 2147483650
        ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "satisfy issue lottery twice mimic sword select raw twin ball harsh wide chat machine keep"
 
@@ -93,6 +99,7 @@ path = [ 2147483648
        , 3147483648
        ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "satisfy issue lottery twice mimic sword select raw twin ball harsh wide chat machine keep"
 
