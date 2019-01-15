@@ -33,6 +33,7 @@ module Cardano.Crypto.Wallet
     , XPub(..)
     , XSignature
     , generate
+    , generateNew
     , xprv
     , xpub
     , xsignature
@@ -56,6 +57,7 @@ import           Control.Arrow                   (second)
 import           Crypto.Error                    (throwCryptoError, CryptoFailable(..), CryptoError(..))
 import qualified Crypto.MAC.HMAC                 as HMAC
 import qualified Crypto.PubKey.Ed25519           as Ed25519
+import           Crypto.KDF.PBKDF2               (fastPBKDF2_SHA512, Parameters(..))
 import           Data.ByteArray                  (ByteArrayAccess, convert)
 import qualified Data.ByteArray                  as B (append, length, splitAt)
 import           Data.ByteString                 (ByteString)
@@ -113,6 +115,22 @@ generate seed passPhrase
       where (iL, iR) = hFinalize
                      $ flip HMAC.update (phrase i)
                      $ hInitSeed seed
+
+-- | Generate a new XPrv from an entropy seed
+--
+-- The seed should be at least 16 bytes, although it is not enforced
+--
+-- The passphrase encrypt the secret key in memory
+generateNew :: (ByteArrayAccess keyPassPhrase, ByteArrayAccess generationPassPhrase, ByteArrayAccess seed)
+            => seed                 -- ^ Raw entropy used as source of randomness for this algorithm
+            -> generationPassPhrase -- ^ User chosen passphrase for the generation phase
+            -> keyPassPhrase        -- ^ Symmetric encryption key passphrase used for the in-memory security
+            -> XPrv
+generateNew seed genPassPhrase memPassPhrase =
+    XPrv $ encryptedCreateDirectWithTweak out memPassPhrase
+  where
+    out :: ByteString
+    out = fastPBKDF2_SHA512 (Parameters 4096 96) genPassPhrase seed
 
 -- | Simple constructor
 xprv :: ByteArrayAccess bin => bin -> Either String XPrv
