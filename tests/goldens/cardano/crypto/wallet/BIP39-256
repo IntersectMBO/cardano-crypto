@@ -7,6 +7,7 @@ xPub = "6ac5551e7644fc0e3bf7c2e1d9187737c235c2991cf72bc7c56c9f989b2c450d903b986d
 data_to_sign = "Hello World"
 path = []
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "mouse logic say gym hip jaguar country lake black hood program acoustic sunny cram capital brush office wage winter rapid calm metal veteran history"
 
@@ -19,6 +20,7 @@ xPub = "d884eb1283e73533564a2aea444f2d59d048bb3856937512d1e00080f11d590f2cae2fc1
 data_to_sign = "Hello World"
 path = [ 2147483648 ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "mouse logic say gym hip jaguar country lake black hood program acoustic sunny cram capital brush office wage winter rapid calm metal veteran history"
 
@@ -31,6 +33,7 @@ xPub = "0771b6dfdaf7d4ca531c45538c8b1d5d9d86df1d954e9464bd9ec1ee81ed527953638211
 data_to_sign = "Hello World"
 path = [ 2147483649 ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "mouse logic say gym hip jaguar country lake black hood program acoustic sunny cram capital brush office wage winter rapid calm metal veteran history"
 
@@ -45,6 +48,7 @@ path = [ 2147483648
        , 2147483649
        ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "mouse logic say gym hip jaguar country lake black hood program acoustic sunny cram capital brush office wage winter rapid calm metal veteran history"
 
@@ -60,6 +64,7 @@ path = [ 2147483648
        , 2147483650
        ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "mouse logic say gym hip jaguar country lake black hood program acoustic sunny cram capital brush office wage winter rapid calm metal veteran history"
 
@@ -76,6 +81,7 @@ path = [ 2147483648
        , 2147483650
        ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "mouse logic say gym hip jaguar country lake black hood program acoustic sunny cram capital brush office wage winter rapid calm metal veteran history"
 
@@ -93,6 +99,7 @@ path = [ 2147483648
        , 3147483648
        ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "mouse logic say gym hip jaguar country lake black hood program acoustic sunny cram capital brush office wage winter rapid calm metal veteran history"
 

@@ -7,6 +7,7 @@ xPub = "ac2774dc6d6c7e8c8e7cdf787c0c3404302857b00f4dc2537fe350a220d880b296911ef9
 data_to_sign = "Hello World"
 path = []
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "mail hundred home absorb logic ride grocery scale south awful wool wish energy idle cook jeans ball rocket"
 
@@ -19,6 +20,7 @@ xPub = "8ef02de1e54a56e00f7b025ca36597e8b93263ee992d9997f16984bfb16d680aee5bc77e
 data_to_sign = "Hello World"
 path = [ 2147483648 ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "mail hundred home absorb logic ride grocery scale south awful wool wish energy idle cook jeans ball rocket"
 
@@ -31,6 +33,7 @@ xPub = "d59881c586f3b758c0fcc64c23fc68a9b77040426581ee2c63fd548f43f70f85651d62c2
 data_to_sign = "Hello World"
 path = [ 2147483649 ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "mail hundred home absorb logic ride grocery scale south awful wool wish energy idle cook jeans ball rocket"
 
@@ -45,6 +48,7 @@ path = [ 2147483648
        , 2147483649
        ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "mail hundred home absorb logic ride grocery scale south awful wool wish energy idle cook jeans ball rocket"
 
@@ -60,6 +64,7 @@ path = [ 2147483648
        , 2147483650
        ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "mail hundred home absorb logic ride grocery scale south awful wool wish energy idle cook jeans ball rocket"
 
@@ -76,6 +81,7 @@ path = [ 2147483648
        , 2147483650
        ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "mail hundred home absorb logic ride grocery scale south awful wool wish energy idle cook jeans ball rocket"
 
@@ -93,6 +99,7 @@ path = [ 2147483648
        , 3147483648
        ]
 derivation_scheme = "derivation-scheme1"
+master_key_generation = "retry-old"
 passphrase = ""
 words = "mail hundred home absorb logic ride grocery scale south awful wool wish energy idle cook jeans ball rocket"
 

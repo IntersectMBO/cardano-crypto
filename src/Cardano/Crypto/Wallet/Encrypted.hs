@@ -5,6 +5,7 @@ module Cardano.Crypto.Wallet.Encrypted
     , Signature(..)
     -- * Methods
     , encryptedCreate
+    , encryptedCreateDirectWithTweak
     , encryptedChangePass
     , encryptedSign
     , encryptedPublic
@@ -91,6 +92,18 @@ encryptedCreate sec pass cc
             then return $ CryptoPassed $ EncryptedKey k
             else return $ CryptoFailed CryptoError_SecretKeyStructureInvalid
 
+-- | Create a new encrypted key using the output of the masterKeyGeneration directly (96 bytes)
+-- using the encryption passphrase.
+encryptedCreateDirectWithTweak :: (ByteArrayAccess passphrase, ByteArrayAccess secret)
+                               => secret
+                               -> passphrase
+                               -> EncryptedKey
+encryptedCreateDirectWithTweak sec pass =
+    EncryptedKey $ B.allocAndFreeze totalKeySize $ \ekey ->
+        withByteArray sec  $ \psec  ->
+        withByteArray pass $ \ppass ->
+            wallet_encrypted_new_from_mkg ppass (fromIntegral $ B.length pass) psec ekey
+
 -- | Create a new encrypted key that uses a different passphrase
 encryptedChangePass :: (ByteArrayAccess oldPassPhrase, ByteArrayAccess newPassPhrase)
                     => oldPassPhrase -- ^ passphrase to decrypt the current encrypted key
@@ -174,6 +187,12 @@ foreign import ccall "wallet_encrypted_from_secret"
                                  -> Ptr Word8 -- 32 bytes ChainCode
                                  -> Ptr EncryptedKey
                                  -> IO CInt
+
+foreign import ccall "wallet_encrypted_new_from_mkg"
+    wallet_encrypted_new_from_mkg :: Ptr PassPhrase -> Word32
+                                  -> Ptr Word8 -- 96 bytes master key generation
+                                  -> Ptr EncryptedKey
+                                  -> IO ()
 
 foreign import ccall "wallet_encrypted_sign"
     wallet_encrypted_sign :: Ptr EncryptedKey

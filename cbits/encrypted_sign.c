@@ -113,6 +113,21 @@ int wallet_encrypted_from_secret
 	return 0;
 }
 
+int wallet_encrypted_new_from_mkg
+    (uint8_t const *pass, uint32_t const pass_len,
+     const uint8_t master_key[96],
+     encrypted_key *encrypted_key)
+{
+	ed25519_secret_key secret_key;
+	memcpy(secret_key, master_key, 64);
+	secret_key[0] &= 248;   /* clears the bottom 3 bits */
+	secret_key[31] &= 0x1F; /* clears the 3 highest bits */
+	secret_key[31] |= 64;   /* set the 2nd highest bit */
+
+	wallet_encrypted_initialize(pass, pass_len, secret_key, master_key + 64, encrypted_key);
+	return 0;
+}
+
 void wallet_encrypted_sign
     (encrypted_key const *encrypted_key, uint8_t const* pass, uint32_t const pass_len,
      uint8_t const *data, uint32_t const data_len,

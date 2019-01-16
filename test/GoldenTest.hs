@@ -85,6 +85,7 @@ type HDWallet n
     = "cardano" :> "crypto" :> "wallet" :> PathParameter "BIP39-" n
       :> Payload "words" (Mnemonic 'English (MnemonicWords n))
       :> Payload "passphrase" Passphrase
+      :> Payload "master_key_generation" MasterKeyGeneration
       :> Payload "derivation_scheme" DerivationScheme
       :> Payload "path" ChainCodePath
       :> Payload "data_to_sign" String
@@ -110,16 +111,22 @@ goldenHDWallet = group $ do
             => Proxy n
             -> Mnemonic 'English mw
             -> Passphrase
+            -> MasterKeyGeneration
             -> DerivationScheme
             -> ChainCodePath
             -> String
             -> (XPub, XPrv, XSignature, Seed)
-    runTest p (Mnemonic mw) pw ds (Root path) toSign =
+    runTest p (Mnemonic mw) pw mkg ds (Root path) toSign =
         let -- 1. retrieve the seed
-            seed = fromMaybe (error "Invalid Mnemonic, cannot retrieve the `Seed'")
-                             (cardanoSlSeed p mw)
-            -- 2. generate from the seed
-            master = generate seed pw
+            -- 1. retrieve the seed and 2. generate from the seed
+            (seed, master) = case mkg of
+                        MasterKeyRetryOld ->
+                            let seedX = fromMaybe (error "Invalid Mnemonic, cannot retrieve the `Seed'")
+                                                 (cardanoSlSeed p mw)
+                             in (seedX, generate seedX pw)
+                        MasterKeyPBKDF    ->
+                            let seedX = seedFromMnemonics p mw
+                             in (seedX, generateNew seedX (B.empty :: Bytes) pw)
             -- 3. get the XPrv from the master and the path
             priv = deriveWith master path
             -- 4. get the public key
@@ -130,6 +137,15 @@ goldenHDWallet = group $ do
       where
         deriveWith :: XPrv -> [Word32] -> XPrv
         deriveWith = foldl' (deriveXPrv ds pw)
+
+        seedFromMnemonics :: forall n csz mw . ConsistentEntropy n mw csz
+                          => Proxy n
+                          -> MnemonicSentence mw
+                          -> Seed
+        seedFromMnemonics _ mw =
+            case wordsToEntropy @n @csz @mw mw of
+                Left _ -> error "Invalid Mnemonic"
+                Right e -> B.convert $ entropyRaw e
 
 -- -------------------------------------------------------------------------- --
 
@@ -199,6 +215,23 @@ data Language = English
 -- BIP39 mnemonics
 newtype Mnemonic (k :: Language) n = Mnemonic (MnemonicSentence n)
   deriving (Eq, Typeable)
+
+-- | The type of master key generation
+data MasterKeyGeneration = MasterKeyRetryOld | MasterKeyPBKDF
+    deriving (Show,Eq)
+
+instance Inspectable MasterKeyGeneration where
+    documentation _ = "Master Key Derivation: list of derivation path."
+    exportType    _ = Type.String
+    builder MasterKeyRetryOld = Value.String "retry-old"
+    builder MasterKeyPBKDF = Value.String "pbkdf"
+    parser          = withString "MasterKeyGeneration" $ \str -> case str of
+        "retry-old" -> pure MasterKeyRetryOld
+        "pbkdf"     -> pure MasterKeyPBKDF
+        _           -> Left $ "Expected either `retry-old' or `pbkdf' but found: `" <> str <> "'"
+
+instance Arbitrary MasterKeyGeneration where
+    arbitrary = elements $ nonEmpty_ [MasterKeyRetryOld, MasterKeyPBKDF]
 
 instance Arbitrary (Mnemonic 'English 12) where
     arbitrary = Mnemonic . entropyToWords @128 @4 @12 <$> arbitrary
