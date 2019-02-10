@@ -11,6 +11,8 @@ copyright:           2016-2017 IOHK
 category:            Crypto
 build-type:          Simple
 extra-source-files:  README.md
+                     cbits/*.h
+                     cbits/ed25519/*.h
 cabal-version:       >=1.10
 
 flag golden-tests
@@ -58,29 +60,6 @@ library
   C-sources:           cbits/ed25519/ed25519.c
                        cbits/encrypted_sign.c
   include-dirs:        cbits/ed25519 cbits
-  install-includes:
-    cbits/cryptonite_pbkdf2.h
-    cbits/cryptonite_sha512.h
-    cbits/ed25519/curve25519-donna-32bit.h
-    cbits/ed25519/curve25519-donna-64bit.h
-    cbits/ed25519/curve25519-donna-helpers.h
-    cbits/ed25519/ed25519-donna-32bit-sse2.h
-    cbits/ed25519/ed25519-donna-32bit-tables.h
-    cbits/ed25519/ed25519-donna-64bit-tables.h
-    cbits/ed25519/ed25519-donna-64bit-x86-32bit.h
-    cbits/ed25519/ed25519-donna-64bit-x86.h
-    cbits/ed25519/ed25519-donna-basepoint-table.h
-    cbits/ed25519/ed25519-donna-batchverify.h
-    cbits/ed25519/ed25519-donna-impl-base.h
-    cbits/ed25519/ed25519-donna-portable-identify.h
-    cbits/ed25519/ed25519-donna-portable.h
-    cbits/ed25519/ed25519-donna.h
-    cbits/ed25519/ed25519-hash.h
-    cbits/ed25519/ed25519-randombytes.h
-    cbits/ed25519/ed25519.h
-    cbits/ed25519/modm-donna-32bit.h
-    cbits/ed25519/modm-donna-64bit.h
-    cbits/hmac.h
   default-extensions:  GeneralizedNewtypeDeriving
   ghc-options:         -Wall
   cc-options:          -Wall -Wno-unused-function
