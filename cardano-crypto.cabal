@@ -11,6 +11,8 @@ copyright:           2016-2017 IOHK
 category:            Crypto
 build-type:          Simple
 extra-source-files:  README.md
+                     cbits/*.h
+                     cbits/ed25519/*.h
 cabal-version:       >=1.10
 
 flag golden-tests
