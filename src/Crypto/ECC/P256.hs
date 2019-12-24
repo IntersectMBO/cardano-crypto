@@ -37,8 +37,6 @@ module Crypto.ECC.P256
     , hashPointsToKey
     ) where
 
-#define OPENSSL
-
 import Prelude (Show(..))
 
 import Foundation hiding (show)
@@ -60,6 +58,8 @@ import GHC.Integer.GMP.Internals (recipModInteger)
 import Crypto.Number.Generate
 #else
 import qualified Crypto.PubKey.ECC.P256 as P256
+import           Crypto.Error (throwCryptoError, CryptoError, eitherCryptoError)
+import           Crypto.Number.ModArithmetic (expSafe)
 #endif
 
 data KeyPair = KeyPair
@@ -216,8 +216,30 @@ mulPowerAndSum l n = Point $ SSL.ecPointsMulOfPowerAndSum p256 (fmap unPoint l) 
 newtype Point = Point { unPoint :: P256.Point }
     deriving (Show,Eq)
 
-newtype Scalar = Scalar P256.Scalar
+instance NormalForm Point where
+    toNormalForm (Point !_) = ()
+instance Arbitrary Point where
+    arbitrary = pointFromSecret <$> arbitrary
+
+pointFromBytes :: ByteArrayAccess ba => ba -> Either [Char] Point
+pointFromBytes b = Point <$> (toEither . P256.pointFromBinary) b
+    where
+        toEither a = case eitherCryptoError a of
+            Left e -> Left (show e)
+            Right v -> Right v
+
+newtype Scalar = Scalar { unScalar :: P256.Scalar }
     deriving (Eq)
+
+scalarToBytes :: ByteArray b => Scalar -> b
+scalarToBytes = P256.scalarToBinary . unScalar
+
+instance NormalForm Scalar where
+    toNormalForm (Scalar p) = toNormalForm (P256.scalarToInteger p)
+instance Arbitrary Scalar where
+    arbitrary = do
+        drg <- drgNewTest <$> arbitrary
+        pure $ fst $ withDRG drg keyGenerate
 
 instance Show Scalar where
     show (Scalar p) = show (P256.scalarToInteger p)
@@ -232,11 +254,19 @@ pointFromSecret :: Scalar -> Point
 pointFromSecret (Scalar s) = Point $ P256.toPoint s
 
 pointToDhSecret :: Point -> DhSecret
-pointToDhSecret (Point p) = DhSecret $ B.convert $ hashSHA256 $ P256.pointToBinary p
+pointToDhSecret (Point p) = DhSecret $ B.convert $ hashSHA256 $ (P256.pointToBinary p :: Bytes)
+
+pointToBinary :: ByteArray b => Point -> b
+pointToBinary = P256.pointToBinary . unPoint
+
 
 -- | Point adding
 (.+) :: Point -> Point -> Point
 (.+) (Point a) (Point b) = Point (P256.pointAdd a b)
+
+-- | Point subtraction
+(.-) :: Point -> Point -> Point
+(.-) (Point a) (Point b) = Point (P256.pointAdd a $ P256.pointNegate b)
 
 -- | Point scaling
 (.*) :: Point -> Scalar -> Point
@@ -265,8 +295,15 @@ pointToDhSecret (Point p) = DhSecret $ B.convert $ hashSHA256 $ P256.pointToBina
            $ P256.scalarFromInteger
            $ expSafe (P256.scalarToInteger a) n p256Mod
 
+mulAndSum :: [(Point,Scalar)] -> Point
+mulAndSum l = Point $ let x:xs = (fmap (\(Point p, Scalar s) -> P256.pointMul s p) l) in foldr P256.pointAdd x xs
+
+-- f [p1,p2,..,pi] n = p1 * (n ^ 0) + p2 * (n ^ 1) + .. + pi * (n ^ i-1)
+mulPowerAndSum :: [Point] -> Integer -> Point
+mulPowerAndSum l n = Point $ fmap (\p e -> P256.pointMul (n ^ e) p) $ zip (fmap unPoint l) [0..]
+
 pointIdentity :: Point
-pointIdentity = Point $ P256.pointFromIntegers 0 0
+pointIdentity = Point $ P256.pointFromIntegers (0, 0)
 
 keyFromNum :: Integer -> Scalar
 keyFromNum = Scalar . throwCryptoError . P256.scalarFromInteger
@@ -277,13 +314,24 @@ keyInverse (Scalar s) = Scalar (P256.scalarInv s)
 keyGenerate :: MonadRandom randomly => randomly Scalar
 keyGenerate = Scalar <$> P256.scalarGenerate
 
+secretToPublicKey :: PrivateKey -> PublicKey
+secretToPublicKey (PrivateKey k) = PublicKey $ pointFromSecret k
+
 keyPairGenerate :: MonadRandom randomly => randomly KeyPair
 keyPairGenerate = do
-    k <- keyGenerate
-    return $ KeyPair k (pointFromSecret k)
+    k <- PrivateKey <$> keyGenerate
+    return $ KeyPair k (secretToPublicKey k)
+
+hashPoints :: [Point] -> Bytes
+hashPoints elements =
+    B.convert $ hashSHA256 $ (mconcat :: [Bytes] -> Bytes)
+              $ fmap (P256.pointToBinary . unPoint) elements
+
+
 hashPointsToKey :: [Point] -> Scalar
 hashPointsToKey elements =
-    keyFromBytes $ B.convert $ hashSHA256 $ mconcat $ fmap (P256.pointToBinary . unPoint) elements
+    keyFromBytes $ hashSHA256 $ (mconcat :: [Bytes] -> Bytes)
+                 $ fmap (P256.pointToBinary . unPoint) elements
 
 #endif
 

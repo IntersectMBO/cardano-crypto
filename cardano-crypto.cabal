@@ -25,6 +25,11 @@ flag golden-tests-exe
   default:           False
   manual:            True
 
+flag with-openssl
+  description:       compile against cryptonite-openssl
+  default:           False
+  manual:            True
+
 library
   hs-source-dirs:      src
   exposed-modules:     Cardano.Crypto.Wallet
@@ -53,12 +58,15 @@ library
                      , basement
                      , foundation
                      , cryptonite >= 0.22
-                     , cryptonite-openssl >= 0.5
                      , hashable
                      , integer-gmp
+  if flag(with-openssl)
+    build-depends:     cryptonite-openssl >= 0.5
+    cpp-options:       -DOPENSSL
   default-language:    Haskell2010
-  C-sources:           cbits/ed25519/ed25519.c
-                       cbits/encrypted_sign.c
+  if !os(ghcjs)
+    C-sources:           cbits/ed25519/ed25519.c
+                         cbits/encrypted_sign.c
   include-dirs:        cbits/ed25519 cbits
   default-extensions:  GeneralizedNewtypeDeriving
   ghc-options:         -Wall
