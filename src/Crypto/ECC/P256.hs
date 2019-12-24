@@ -37,7 +37,7 @@ module Crypto.ECC.P256
     , hashPointsToKey
     ) where
 
-import Prelude (Show(..))
+import Prelude (Show(..),zip)
 
 import Foundation hiding (show)
 import Foundation.Check (Arbitrary(..))
@@ -222,9 +222,9 @@ instance Arbitrary Point where
     arbitrary = pointFromSecret <$> arbitrary
 
 pointFromBytes :: ByteArrayAccess ba => ba -> Either [Char] Point
-pointFromBytes b = Point <$> (toEither . P256.pointFromBinary) b
+pointFromBytes b = Point <$> (f . P256.pointFromBinary) b
     where
-        toEither a = case eitherCryptoError a of
+        f a = case eitherCryptoError a of
             Left e -> Left (show e)
             Right v -> Right v
 
@@ -300,7 +300,10 @@ mulAndSum l = Point $ let x:xs = (fmap (\(Point p, Scalar s) -> P256.pointMul s 
 
 -- f [p1,p2,..,pi] n = p1 * (n ^ 0) + p2 * (n ^ 1) + .. + pi * (n ^ i-1)
 mulPowerAndSum :: [Point] -> Integer -> Point
-mulPowerAndSum l n = Point $ fmap (\p e -> P256.pointMul (n ^ e) p) $ zip (fmap unPoint l) [0..]
+mulPowerAndSum l n = foldr (.+) x xs
+    where
+        x:xs = fmap (\(p,e) -> p .* (s #^ e)) $ zip l [0..]
+        s = Scalar $ throwCryptoError $ P256.scalarFromInteger n
 
 pointIdentity :: Point
 pointIdentity = Point $ P256.pointFromIntegers (0, 0)
