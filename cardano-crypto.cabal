@@ -33,15 +33,12 @@ library
                        Cardano.Crypto.Wallet.Pure
                        Cardano.Crypto.Encoding.BIP39
                        Cardano.Crypto.Encoding.Seed
-                       Cardano.Crypto.Praos.VRF
                        Crypto.Math.Edwards25519
                        Crypto.Math.Bits
                        Crypto.Math.Bytes
                        Crypto.Math.NatMath
                        Crypto.ECC.Ed25519Donna
                        Crypto.ECC.Ed25519BIP32
-                       Crypto.ECC.P256
-                       Crypto.DLEQ
                        Crypto.Encoding.BIP39
                        Crypto.Encoding.BIP39.Dictionary
                        Crypto.Encoding.BIP39.English
@@ -53,7 +50,6 @@ library
                      , basement
                      , foundation
                      , cryptonite >= 0.22
-                     , cryptonite-openssl >= 0.5
                      , hashable
                      , integer-gmp
   default-language:    Haskell2010
