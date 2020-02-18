@@ -73,8 +73,6 @@ test-suite cardano-crypto-test
                        Test.Cardano.Crypto
                        Test.Cardano.Crypto.Encoding
                        Test.Cardano.Crypto.Encoding.Seed
-                       Test.Cardano.Crypto.Praos
-                       Test.Cardano.Crypto.Praos.VRF
                        Utils
   build-depends:       base
                      , bytestring

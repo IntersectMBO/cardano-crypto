@@ -35,7 +35,6 @@ import           Cardano.Crypto.Wallet
 import           Cardano.Crypto.Encoding.Seed
 import           Cardano.Crypto.Encoding.BIP39
 import           Crypto.Encoding.BIP39.English (english)
-import qualified Cardano.Crypto.Praos.VRF as VRF
 import           Cardano.Internal.Compat (fromRight)
 
 import Test.Orphans
@@ -46,20 +45,6 @@ main = defaultTest $ do
     goldenBIP39
     goldenHDWallet
     goldenPaperwallet
-    goldenVRF
-
-type GoldenVRF
-    = "cardano" :> "crypto" :> "VRF"
-      :> Payload "random"  VRF.SecretKey
-      :> Payload "message" String
-      :> Payload "secret"  VRF.SecretKey
-      :> ( Payload "output" Bytes
-         , Payload "proof" VRF.Proof
-         )
-
-goldenVRF :: GoldenT ()
-goldenVRF = golden (Proxy :: Proxy GoldenVRF) $ \r msg sec ->
-    first convert (VRF.generate' r msg sec)
 
 -- -------------------------------------------------------------------------- --
 
