@@ -39,7 +39,6 @@ import           Crypto.Hash (hashWith, SHA512(..))
 import           Data.ByteArray (alloc)
 import           Data.Bits
 import           Control.Monad
-import           System.IO.Unsafe (unsafePerformIO)
 
 unsafeDoIO :: IO a -> a
 unsafeDoIO = unsafeDupablePerformIO

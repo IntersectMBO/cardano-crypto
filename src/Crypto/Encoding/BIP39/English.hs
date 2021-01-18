@@ -4,7 +4,6 @@
 module Crypto.Encoding.BIP39.English ( english ) where
 
 import Basement.Imports
-import Basement.String (String)
 import Basement.Sized.Vect
 
 import Data.Maybe (fromMaybe)
