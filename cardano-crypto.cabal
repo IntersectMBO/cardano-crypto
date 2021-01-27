@@ -7,7 +7,7 @@ license:             MIT
 license-file:        LICENSE
 author:              Vincent Hanquez
 maintainer:          contact@typed.io
-copyright:           2016-2017 IOHK
+copyright:           2016-2021 IOHK
 category:            Crypto
 build-type:          Simple
 extra-source-files:  README.md
