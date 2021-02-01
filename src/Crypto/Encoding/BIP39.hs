@@ -64,7 +64,6 @@ module Crypto.Encoding.BIP39
 
 import Prelude ((-), (*), (+), div, divMod, (^), fromIntegral)
 
-import           Basement.String (String)
 import qualified Basement.String as String
 import           Basement.Nat
 import qualified Basement.Sized.List as ListN
@@ -88,7 +87,6 @@ import qualified Data.ByteString as BS
 
 import           Data.Proxy
 
-import           GHC.Exts (IsList(..), IsString)
 import           GHC.TypeLits
 
 import           Crypto.Hash (hashWith, SHA256(..))

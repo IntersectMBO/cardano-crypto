@@ -21,7 +21,6 @@ module Crypto.Encoding.BIP39.Dictionary
     , DictionaryError(..)
     ) where
 
-import           Basement.String (String)
 import           Basement.NormalForm
 import           Basement.Compat.Typeable
 import           Basement.Types.OffsetSize (Offset(..))
