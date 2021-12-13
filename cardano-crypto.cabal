@@ -13,6 +13,7 @@ build-type:          Simple
 extra-source-files:  README.md
                      cbits/*.h
                      cbits/ed25519/*.h
+                     jsbits/bindings.js                     
 cabal-version:       >=1.10
 
 flag golden-tests
@@ -61,6 +62,8 @@ library
   cc-options:          -Wall -Wno-unused-function
   if impl(ghc >= 8.6)
     default-extensions: NoStarIsType
+  if os(ghcjs)
+    js-sources: jsbits/bindings.js
 
 test-suite cardano-crypto-test
   type:                exitcode-stdio-1.0
