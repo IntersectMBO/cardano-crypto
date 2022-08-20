@@ -13,11 +13,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ghc: ["8.10.4"]
+        ghc: ["8.10.7"]
         os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
 
     - name: Install dos2unix (Linux)
       if: matrix.os == 'ubuntu-latest'
@@ -25,14 +25,14 @@ jobs:
         sudo apt-get update
         sudo apt-get install dos2unix
 
-    - name: Install dos2unix (MacOS)
+    - name: Install dos2unix (macOS)
       if: matrix.os == 'macos-latest'
       run: brew install dos2unix
 
     - name: Select build directory
       run: echo "CABAL_BUILDDIR=dist" >> $GITHUB_ENV
 
-    - uses: haskell/actions/setup@v1
+    - uses: haskell/actions/setup@v2
       id: setup-haskell
       with:
         ghc-version: ${{ matrix.ghc }}
@@ -51,10 +51,12 @@ jobs:
     - name: Set cache version
       run: echo "CACHE_VERSION=9w76Z3Q" >> $GITHUB_ENV
 
-    - uses: actions/cache@v2
+    - uses: actions/cache@v3
       name: Cache cabal store
       with:
-        path: ${{ steps.setup-haskell.outputs.cabal-store }}
+        path: |
+          ${{ steps.setup-haskell.outputs.cabal-store }}
+          dist-newstyle
         key: cache-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('dependencies.txt') }}
         restore-keys: |
           cache-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('dependencies.txt') }}
