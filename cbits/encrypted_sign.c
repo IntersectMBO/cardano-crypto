@@ -253,9 +253,9 @@ static void serialize_index32(uint8_t *out, uint32_t index, derivation_scheme_mo
 
 static void add_left(ed25519_secret_key res_key, uint8_t *z, ed25519_secret_key priv_key, derivation_scheme_mode mode)
 {
-	uint8_t zl8[32];
+	ed25519_secret_key zl8;
 
-	memset(zl8, 0, 32);
+	memset(zl8, 0, 64);
 	switch (mode) {
 	case DERIVATION_V1:
 		/* get 8 * Zl */
@@ -287,10 +287,10 @@ static void add_right(ed25519_secret_key res_key, uint8_t *z, ed25519_secret_key
 
 static void add_left_public(uint8_t *out, uint8_t *z, uint8_t *in, derivation_scheme_mode mode)
 {
-	uint8_t zl8[32];
+	ed25519_secret_key zl8;
 	ed25519_public_key pub_zl8;
 
-	memset(zl8, 0, 32);
+	memset(zl8, 0, 64);
 	switch (mode) {
 	case DERIVATION_V1:
 		multiply8_v1(zl8, z, 32);
