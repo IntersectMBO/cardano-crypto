@@ -5,12 +5,12 @@
 #include <ed25519.h>
 #include <hmac.h>
 
-#include "cryptonite_pbkdf2.h"
+#include "crypton_pbkdf2.h"
 
-typedef uint8_t cryptonite_chacha_context[131];
+typedef uint8_t crypton_chacha_context[131];
 
-extern void cryptonite_chacha_init(cryptonite_chacha_context *ctx, uint8_t nb_rounds, uint32_t keylen, const uint8_t *key, uint32_t ivlen, const uint8_t *iv);
-extern void cryptonite_chacha_combine(uint8_t *dst, cryptonite_chacha_context *st, const uint8_t *src, uint32_t bytes);
+extern void crypton_chacha_init(crypton_chacha_context *ctx, uint8_t nb_rounds, uint32_t keylen, const uint8_t *key, uint32_t ivlen, const uint8_t *iv);
+extern void crypton_chacha_combine(uint8_t *dst, crypton_chacha_context *st, const uint8_t *src, uint32_t bytes);
 
 void clear(void *buf, uint32_t const sz)
 {
@@ -25,7 +25,7 @@ void stretch(uint8_t *buf, uint32_t const buf_len, uint8_t const *pass, uint32_t
 {
 	const uint8_t salt[] = "encrypted wallet salt";
 	assert(pass_len > 0);
-	cryptonite_fastpbkdf2_hmac_sha512(pass, pass_len, salt, sizeof(salt), NB_ITERATIONS, buf, buf_len);
+	crypton_fastpbkdf2_hmac_sha512(pass, pass_len, salt, sizeof(salt), NB_ITERATIONS, buf, buf_len);
 }
 
 #define SYM_KEY_SIZE     32
@@ -53,18 +53,18 @@ typedef struct {
 static void memory_combine(uint8_t const *pass, uint32_t const pass_len, uint8_t const *source, uint8_t *dest, uint32_t sz)
 {
 	uint8_t buf[SYM_BUF_SIZE];
-	cryptonite_chacha_context ctx;
+	crypton_chacha_context ctx;
 	static uint8_t const CHACHA_NB_ROUNDS = 20;
 
 	if (pass_len) {
-		memset(&ctx, 0, sizeof(cryptonite_chacha_context));
+		memset(&ctx, 0, sizeof(crypton_chacha_context));
 
 		/* generate BUF_SIZE bytes where first KEY_SIZE bytes is the key and NONCE_SIZE remaining bytes the nonce */
 		stretch(buf, SYM_BUF_SIZE, pass, pass_len);
-		cryptonite_chacha_init(&ctx, CHACHA_NB_ROUNDS, SYM_KEY_SIZE, buf, SYM_NONCE_SIZE, buf + SYM_KEY_SIZE);
+		crypton_chacha_init(&ctx, CHACHA_NB_ROUNDS, SYM_KEY_SIZE, buf, SYM_NONCE_SIZE, buf + SYM_KEY_SIZE);
 		clear(buf, SYM_BUF_SIZE);
-		cryptonite_chacha_combine(dest, &ctx, source, sz);
-		clear(&ctx, sizeof(cryptonite_chacha_context));
+		crypton_chacha_combine(dest, &ctx, source, sz);
+		clear(&ctx, sizeof(crypton_chacha_context));
 	} else {
 		memcpy(dest, source, sz);
 	}
@@ -158,9 +158,9 @@ DECL_HMAC(sha512,
           SHA512_BLOCK_SIZE,
           SHA512_DIGEST_SIZE,
           struct sha512_ctx,
-          cryptonite_sha512_init,
-          cryptonite_sha512_update,
-          cryptonite_sha512_finalize);
+          crypton_sha512_init,
+          crypton_sha512_update,
+          crypton_sha512_finalize);
 
 typedef enum {
 	DERIVATION_V1 = 1,
