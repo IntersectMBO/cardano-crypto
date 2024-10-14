@@ -32,11 +32,11 @@ jobs:
     - name: Select build directory
       run: echo "CABAL_BUILDDIR=dist" >> $GITHUB_ENV
 
-    - uses: haskell/actions/setup@v1
+    - uses: haskell-actions/setup@v2
       id: setup-haskell
       with:
         ghc-version: ${{ matrix.ghc }}
-        cabal-version: 3.10.1.0
+        # cabal-version: 3.10.1.0
 
     - name: Cabal update
       run: cabal update
