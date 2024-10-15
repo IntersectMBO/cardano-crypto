@@ -1,7 +1,7 @@
 #ifndef HMAC_H
 #define HMAC_H
 
-#include "cryptonite_sha512.h"
+#include "crypton_sha512.h"
 
 #define HMAC_CTX(_name) HMAC_ ## _name ## _ctx
 #define HMAC_INIT(_name) HMAC_ ## _name ## _init
