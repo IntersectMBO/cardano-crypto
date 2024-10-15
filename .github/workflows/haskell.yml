@@ -27,7 +27,7 @@ jobs:
 
     - name: Install dos2unix (MacOS)
       if: matrix.os == 'macos-latest'
-      run: brew install dos2unix
+      run: brew install dos2unix llvm@13
 
     - name: Select build directory
       run: echo "CABAL_BUILDDIR=dist" >> $GITHUB_ENV
