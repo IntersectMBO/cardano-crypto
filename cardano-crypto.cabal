@@ -1,7 +1,7 @@
 name:                cardano-crypto
 version:             1.2.0
 synopsis:            Cryptography primitives for cardano
-description:
+description:         This package provide cryptographic primitives in use in the Cardano network, mostly related to legacy Byron era.
 homepage:            https://github.com/input-output-hk/cardano-crypto#readme
 license:             MIT
 license-file:        LICENSE
@@ -44,14 +44,14 @@ library
                        Crypto.Encoding.BIP39.English
                        Cardano.Internal.Compat
   build-depends:       base >= 4.7 && < 5
-                     , memory
+                     , basement >= 0.0.16
+                     , bytestring >= 0.11
+                     , crypton >= 0.32 && < 1.1
                      , deepseq
-                     , bytestring
-                     , basement
                      , foundation
-                     , crypton >= 0.22
-                     , hashable
                      , integer-gmp
+                     , hashable >= 1.4 && < 1.6
+                     , memory >= 0.18
   default-language:    Haskell2010
   C-sources:           cbits/ed25519/ed25519.c
                        cbits/encrypted_sign.c
