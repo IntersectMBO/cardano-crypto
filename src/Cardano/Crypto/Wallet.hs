@@ -1,10 +1,14 @@
 -- |
 -- Module      : Cardano.Crypto.Wallet
--- Description : HD Wallet routines
+-- Description : HD wallet routines over versioned encrypted root keys.
 -- Maintainer  : vincent@typed.io
 --
 -- This provides similar functionality to BIP32 but using
 -- Ed25519 arithmetic instead of P256K1 arithmethic.
+--
+-- Persisted extended private keys are serialized encrypted envelopes. New
+-- writes use an authenticated @v2@ format while legacy @v1@ values remain
+-- readable for migration.
 --
 -- Key can be hierarchically derived from private key in two
 -- fashions: Hardened or Normal.
@@ -30,6 +34,8 @@ module Cardano.Crypto.Wallet
     , pattern LatestScheme
     -- * Extended Private & Public types
     , XPrv
+    , XPrvError(..)
+    , XPrvFormat(..)
     , XPub(..)
     , XSignature
     , generate
@@ -42,6 +48,10 @@ module Cardano.Crypto.Wallet
     , unXSignature
     , toXPub
     , xPubGetPublicKey
+    , xPrvFormat
+    , validateXPrvPassphrase
+    , upgradeXPrvToV2
+    , rewrapXPrvToV2
     , xPrvChangePass
     -- * Derivation function
     , deriveXPrv
@@ -54,7 +64,7 @@ module Cardano.Crypto.Wallet
 import           Basement.Compat.Typeable
 import           Control.DeepSeq                 (NFData)
 import           Control.Arrow                   (second)
-import           Crypto.Error                    (throwCryptoError, CryptoFailable(..), CryptoError(..))
+import           Crypto.Error                    (throwCryptoError)
 import qualified Crypto.MAC.HMAC                 as HMAC
 import qualified Crypto.PubKey.Ed25519           as Ed25519
 import           Crypto.KDF.PBKDF2               (fastPBKDF2_SHA512, Parameters(..))
@@ -74,7 +84,7 @@ import           Cardano.Crypto.Wallet.Types
 import           GHC.Stack
 
 newtype XPrv = XPrv EncryptedKey
-    deriving (NFData, Typeable, ByteArrayAccess)
+    deriving (NFData, Typeable)
 
 data XPub = XPub
     { xpubPublicKey :: !ByteString
@@ -94,9 +104,9 @@ newtype XSignature = XSignature
 generate :: (ByteArrayAccess passPhrase, ByteArrayAccess seed)
          => seed
          -> passPhrase
-         -> XPrv
+         -> Either XPrvError XPrv
 generate seed passPhrase
-    | B.length seed < 32 = error ("Wallet.generate: seed needs to be >= 32 bytes, got : " ++ show (B.length seed))
+    | B.length seed < 32 = Left XPrvInvalidSecretKey
     | otherwise          = loop 1
   where
     phrase :: Int -> ByteString
@@ -108,10 +118,9 @@ generate seed passPhrase
         | i > 1000  = error "internal error: Wallet.generate looping forever"
         | otherwise =
             case encryptedCreate iL passPhrase iR of
-                    CryptoPassed k -> XPrv k
-                    CryptoFailed err
-                        | err == CryptoError_SecretKeyStructureInvalid -> loop (i+1)
-                        | otherwise                                    -> error "internal error: Wallet.generate: got error from encryptedCreate"
+                    Right k               -> Right (XPrv k)
+                    Left XPrvInvalidSecretKey -> loop (i+1)
+                    Left err              -> Left err
       where (iL, iR) = hFinalize
                      $ flip HMAC.update (phrase i)
                      $ hInitSeed seed
@@ -125,22 +134,23 @@ generateNew :: (ByteArrayAccess keyPassPhrase, ByteArrayAccess generationPassPhr
             => seed                 -- ^ Raw entropy used as source of randomness for this algorithm
             -> generationPassPhrase -- ^ User chosen passphrase for the generation phase
             -> keyPassPhrase        -- ^ Symmetric encryption key passphrase used for the in-memory security
-            -> XPrv
+            -> Either XPrvError XPrv
 generateNew seed genPassPhrase memPassPhrase =
-    XPrv $ encryptedCreateDirectWithTweak out memPassPhrase
+    XPrv <$> encryptedCreateDirectWithTweak out memPassPhrase
   where
     out :: ByteString
     out = fastPBKDF2_SHA512 (Parameters 4096 96) genPassPhrase seed
 
 -- | Simple constructor
-xprv :: ByteArrayAccess bin => bin -> Either String XPrv
+xprv :: ByteArrayAccess bin => bin -> Either XPrvError XPrv
 xprv bs =
-      maybe (Left "error: xprv needs to be 128 bytes") (Right . XPrv)
-    $ encryptedKey
-    $ convert bs
+    XPrv <$> encryptedKey (convert bs)
 
 unXPrv :: XPrv -> ByteString
 unXPrv (XPrv e) = unEncryptedKey e
+
+xPrvFormat :: XPrv -> XPrvFormat
+xPrvFormat (XPrv e) = encryptedKeyFormat e
 
 xpub :: ByteString -> Either String XPub
 xpub bs
@@ -160,8 +170,9 @@ xsignature bs
 -- | Generate extended public key from private key
 toXPub :: HasCallStack => XPrv -> XPub
 toXPub (XPrv ekey) = XPub pub (ChainCode cc)
-  where (_,r)     = B.splitAt 64 $ convert ekey
-        (pub, cc) = B.splitAt 32 r
+  where
+    pub = encryptedPublic ekey
+    cc = encryptedChainCode ekey
 
 -- | Return the Ed25519 public key associated with a XPub context
 xPubGetPublicKey :: XPub -> Ed25519.PublicKey
@@ -172,14 +183,23 @@ xPrvChangePass :: (ByteArrayAccess oldPassPhrase, ByteArrayAccess newPassPhrase)
                => oldPassPhrase -- ^ passphrase to decrypt the current encrypted key
                -> newPassPhrase -- ^ new passphrase to use for the new encrypted key
                -> XPrv
-               -> XPrv
+               -> Either XPrvError XPrv
 xPrvChangePass oldPass newPass (XPrv ekey) =
-    XPrv $ encryptedChangePass oldPass newPass ekey
+    XPrv <$> encryptedChangePass oldPass newPass ekey
+
+validateXPrvPassphrase :: ByteArrayAccess passPhrase => passPhrase -> XPrv -> Either XPrvError ()
+validateXPrvPassphrase passPhrase (XPrv ekey) = encryptedValidatePassphrase ekey passPhrase
+
+upgradeXPrvToV2 :: ByteArrayAccess passPhrase => passPhrase -> XPrv -> Either XPrvError XPrv
+upgradeXPrvToV2 passPhrase (XPrv ekey) = XPrv <$> encryptedUpgradeToV2 passPhrase ekey
+
+rewrapXPrvToV2 :: ByteArrayAccess passPhrase => passPhrase -> XPrv -> Either XPrvError XPrv
+rewrapXPrvToV2 passPhrase (XPrv ekey) = XPrv <$> encryptedRewrapToV2 passPhrase ekey
 
 -- | Derive a child extended private key from an extended private key
-deriveXPrv :: ByteArrayAccess passPhrase => DerivationScheme -> passPhrase -> XPrv -> Word32 -> XPrv
+deriveXPrv :: ByteArrayAccess passPhrase => DerivationScheme -> passPhrase -> XPrv -> Word32 -> Either XPrvError XPrv
 deriveXPrv ds passPhrase (XPrv ekey) n =
-    XPrv (encryptedDerivePrivate ds ekey passPhrase n)
+    XPrv <$> encryptedDerivePrivate ds ekey passPhrase n
 
 -- | Derive a child extended public key from an extended public key
 deriveXPub :: DerivationScheme -> XPub -> Word32 -> Maybe XPub
@@ -191,9 +211,9 @@ sign :: (ByteArrayAccess passPhrase, ByteArrayAccess msg)
      => passPhrase
      -> XPrv
      -> msg
-     -> XSignature
+     -> Either XPrvError XSignature
 sign passphrase (XPrv ekey) ba =
-    XSignature $ let (Signature sig) = encryptedSign ekey passphrase ba in sig
+    (\(Signature sig) -> XSignature sig) <$> encryptedSign ekey passphrase ba
 
 verify :: ByteArrayAccess msg => XPub -> msg -> XSignature -> Bool
 verify (XPub point _) ba (XSignature signature) =

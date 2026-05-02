@@ -60,12 +60,12 @@ instance Inspectable Wallet.XPub where
 
 instance Inspectable Wallet.XPrv where
     documentation _ = "Wallet's extended private key"
-    exportType    _ = Type.Array $ Type.SizedArray Type.Unsigned8 96
+    exportType    _ = Type.Array $ Type.UnsizedArray Type.Unsigned8
     builder         = builder . Wallet.unXPrv
     parser        v = do
         bs <- parser v :: Either String ByteString
         case Wallet.xprv bs of
-            Left err -> Left $ "Expected `xPrv' " <> fromList err
+            Left _ -> Left "Expected `xPrv' parse failure"
             Right e  -> pure e
 
 instance Inspectable Wallet.XSignature where

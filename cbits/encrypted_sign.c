@@ -4,6 +4,7 @@
 
 #include <ed25519.h>
 #include <hmac.h>
+#include <sodium.h>
 
 #include "crypton_pbkdf2.h"
 
@@ -12,10 +13,34 @@ typedef uint8_t crypton_chacha_context[131];
 extern void crypton_chacha_init(crypton_chacha_context *ctx, uint8_t nb_rounds, uint32_t keylen, const uint8_t *key, uint32_t ivlen, const uint8_t *iv);
 extern void crypton_chacha_combine(uint8_t *dst, crypton_chacha_context *st, const uint8_t *src, uint32_t bytes);
 
-void clear(void *buf, uint32_t const sz)
+static void secure_clear(void *buf, uint32_t const sz)
 {
-	/* FIXME - HERE we need to make sure the compiler is not going to remove the call */
-	memset(buf, 0, sz);
+	if (sz == 0) {
+		return;
+	}
+#if defined(__GLIBC__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+	explicit_bzero(buf, sz);
+#elif defined(__STDC_LIB_EXT1__)
+	memset_s(buf, sz, 0, sz);
+#else
+	volatile uint8_t *p = (volatile uint8_t *) buf;
+	uint32_t i;
+	for (i = 0; i < sz; i++) {
+		p[i] = 0;
+	}
+#endif
+}
+
+static int ensure_sodium(void)
+{
+	static int initialized = 0;
+	if (!initialized) {
+		if (sodium_init() < 0) {
+			return -1;
+		}
+		initialized = 1;
+	}
+	return 0;
 }
 
 #define NB_ITERATIONS 15000
@@ -62,9 +87,9 @@ static void memory_combine(uint8_t const *pass, uint32_t const pass_len, uint8_t
 		/* generate BUF_SIZE bytes where first KEY_SIZE bytes is the key and NONCE_SIZE remaining bytes the nonce */
 		stretch(buf, SYM_BUF_SIZE, pass, pass_len);
 		crypton_chacha_init(&ctx, CHACHA_NB_ROUNDS, SYM_KEY_SIZE, buf, SYM_NONCE_SIZE, buf + SYM_KEY_SIZE);
-		clear(buf, SYM_BUF_SIZE);
+		secure_clear(buf, SYM_BUF_SIZE);
 		crypton_chacha_combine(dest, &ctx, source, sz);
-		clear(&ctx, sizeof(crypton_chacha_context));
+		secure_clear(&ctx, sizeof(crypton_chacha_context));
 	} else {
 		memcpy(dest, source, sz);
 	}
@@ -81,7 +106,7 @@ static void unencrypt_start
 
 static void unencrypt_stop(ed25519_secret_key decrypted_key)
 {
-	clear(decrypted_key, sizeof(ed25519_secret_key));
+	secure_clear(decrypted_key, sizeof(ed25519_secret_key));
 }
 
 static void wallet_encrypted_initialize
@@ -110,6 +135,7 @@ int wallet_encrypted_from_secret
 	if (cardano_crypto_ed25519_extend(seed, secret_key))
 		return 1;
 	wallet_encrypted_initialize(pass, pass_len, secret_key, cc, encrypted_key);
+	secure_clear(secret_key, sizeof(secret_key));
 	return 0;
 }
 
@@ -125,6 +151,33 @@ int wallet_encrypted_new_from_mkg
 	secret_key[31] |= 64;   /* set the 2nd highest bit */
 
 	wallet_encrypted_initialize(pass, pass_len, secret_key, master_key + 64, encrypted_key);
+	secure_clear(secret_key, sizeof(secret_key));
+	return 0;
+}
+
+int wallet_encrypted_decrypt
+	(encrypted_key const *in,
+	 uint8_t const *pass,
+	 uint32_t const pass_len,
+	 encrypted_key *out)
+{
+	ed25519_secret_key priv_key;
+	ed25519_public_key pub_key;
+
+	unencrypt_start(pass, pass_len, in, priv_key);
+	cardano_crypto_ed25519_publickey(priv_key, pub_key);
+	if (sodium_memcmp(pub_key, in->pkey, PUBLIC_KEY_SIZE) != 0) {
+		secure_clear(priv_key, sizeof(priv_key));
+		secure_clear(pub_key, sizeof(pub_key));
+		return 1;
+	}
+
+	memcpy(out->ekey, priv_key, ENCRYPTED_KEY_SIZE);
+	memcpy(out->pkey, in->pkey, PUBLIC_KEY_SIZE);
+	memcpy(out->cc, in->cc, CHAIN_CODE_SIZE);
+
+	secure_clear(priv_key, sizeof(priv_key));
+	secure_clear(pub_key, sizeof(pub_key));
 	return 0;
 }
 
@@ -355,8 +408,11 @@ void wallet_encrypted_derive_private
 	unencrypt_stop(priv_key);
 
 	wallet_encrypted_initialize(pass, pass_len, res_key, hmac_out + 32, out);
-	clear(res_key, ENCRYPTED_KEY_SIZE);
-	clear(hmac_out, 64);
+	secure_clear(res_key, ENCRYPTED_KEY_SIZE);
+	secure_clear(hmac_out, 64);
+	secure_clear(z, 64);
+	secure_clear(idxBuf, sizeof(idxBuf));
+	secure_clear(&hmac_ctx, sizeof(hmac_ctx));
 }
 
 int wallet_encrypted_derive_public
@@ -396,6 +452,119 @@ int wallet_encrypted_derive_public
 	HMAC_sha512_final(&hmac_ctx, hmac_out);
 
 	memcpy(cc_out, hmac_out + (sizeof(hmac_out) - CHAIN_CODE_SIZE), CHAIN_CODE_SIZE);
+	secure_clear(z, 64);
+	secure_clear(hmac_out, 64);
+	secure_clear(idxBuf, sizeof(idxBuf));
+	secure_clear(&hmac_ctx, sizeof(hmac_ctx));
 
 	return 0;
+}
+
+int wallet_sodium_randombytes(uint8_t *out, uint32_t out_len)
+{
+	if (ensure_sodium() != 0) {
+		return 1;
+	}
+	randombytes_buf(out, (size_t) out_len);
+	return 0;
+}
+
+int wallet_sodium_argon2id(uint8_t *out,
+	uint32_t out_len,
+	uint8_t const *pass,
+	uint32_t pass_len,
+	uint8_t const salt[crypto_pwhash_SALTBYTES],
+	uint32_t opslimit,
+	uint64_t memlimit)
+{
+	if (ensure_sodium() != 0) {
+		return 1;
+	}
+	if (out_len != 32) {
+		return 1;
+	}
+	return crypto_pwhash(out,
+		(unsigned long long) out_len,
+		(const char *) pass,
+		(unsigned long long) pass_len,
+		salt,
+		(unsigned long long) opslimit,
+		(size_t) memlimit,
+		crypto_pwhash_ALG_ARGON2ID13);
+}
+
+int wallet_sodium_xchacha20poly1305_encrypt(
+	uint8_t *ciphertext,
+	uint8_t tag[crypto_aead_xchacha20poly1305_ietf_ABYTES],
+	uint8_t const *plaintext,
+	uint32_t plaintext_len,
+	uint8_t const *aad,
+	uint32_t aad_len,
+	uint8_t const nonce[crypto_aead_xchacha20poly1305_ietf_NPUBBYTES],
+	uint8_t const key[crypto_aead_xchacha20poly1305_ietf_KEYBYTES])
+{
+	unsigned long long clen = 0;
+	uint8_t combined[crypto_aead_xchacha20poly1305_ietf_ABYTES + ENCRYPTED_KEY_SIZE];
+
+	if (ensure_sodium() != 0) {
+		return 1;
+	}
+	if (plaintext_len != ENCRYPTED_KEY_SIZE) {
+		return 1;
+	}
+	if (crypto_aead_xchacha20poly1305_ietf_encrypt(
+		combined,
+		&clen,
+		plaintext,
+		(unsigned long long) plaintext_len,
+		aad,
+		(unsigned long long) aad_len,
+		NULL,
+		nonce,
+		key) != 0) {
+		secure_clear(combined, sizeof(combined));
+		return 1;
+	}
+	memcpy(ciphertext, combined, plaintext_len);
+	memcpy(tag, combined + plaintext_len, crypto_aead_xchacha20poly1305_ietf_ABYTES);
+	secure_clear(combined, sizeof(combined));
+	return 0;
+}
+
+int wallet_sodium_xchacha20poly1305_decrypt(
+	uint8_t *plaintext,
+	uint8_t const *ciphertext,
+	uint32_t ciphertext_len,
+	uint8_t const tag[crypto_aead_xchacha20poly1305_ietf_ABYTES],
+	uint8_t const *aad,
+	uint32_t aad_len,
+	uint8_t const nonce[crypto_aead_xchacha20poly1305_ietf_NPUBBYTES],
+	uint8_t const key[crypto_aead_xchacha20poly1305_ietf_KEYBYTES])
+{
+	unsigned long long plen = 0;
+	uint8_t combined[crypto_aead_xchacha20poly1305_ietf_ABYTES + ENCRYPTED_KEY_SIZE];
+
+	if (ensure_sodium() != 0) {
+		return 1;
+	}
+	if (ciphertext_len != ENCRYPTED_KEY_SIZE) {
+		return 1;
+	}
+	memcpy(combined, ciphertext, ciphertext_len);
+	memcpy(combined + ciphertext_len, tag, crypto_aead_xchacha20poly1305_ietf_ABYTES);
+	if (crypto_aead_xchacha20poly1305_ietf_decrypt(
+		plaintext,
+		&plen,
+		NULL,
+		combined,
+		(unsigned long long) (ciphertext_len + crypto_aead_xchacha20poly1305_ietf_ABYTES),
+		aad,
+		(unsigned long long) aad_len,
+		nonce,
+		key) != 0) {
+		secure_clear(combined, sizeof(combined));
+		return 1;
+	}
+	secure_clear(combined, sizeof(combined));
+	return (plen == ciphertext_len) ? 0 : 1;
 }

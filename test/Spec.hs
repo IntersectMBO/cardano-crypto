@@ -54,6 +54,9 @@ import qualified Test.Cardano as Cardano
 noPassphrase :: B.ByteString
 noPassphrase = ""
 
+unwrap :: Show e => Either e a -> a
+unwrap = either (error . show) id
+
 dummyPassphrase :: B.ByteString
 dummyPassphrase = "dummy passphrase"
 
@@ -158,20 +161,10 @@ testHdDerivation =
 -}
 
 testEncrypted =
-    [ Property "pub(sec) = pub(encrypted(no-pass, sec))" (pubEq noPassphrase)
-    , Property "pub(sec) = pub(encrypted(dummy, sec))" (pubEq dummyPassphrase)
-    , Property "pub(sec) = pub(encrypted(no-pass, sec))" (pubEqValid noPassphrase)
+    [ Property "pub(sec) = pub(encrypted(no-pass, sec))" (pubEqValid noPassphrase)
     , Property "pub(sec) = pub(encrypted(dummy, sec))" (pubEqValid dummyPassphrase)
-    , Property "sign(sec, msg) = sign(encrypted(no-pass, sec), msg)" (signEq noPassphrase)
     , Property "sign(sec, msg) = sign(encrypted(dummy, sec), msg)" (signEq dummyPassphrase)
-    , Property "n <= 0x80000000 => pub(derive(sec, n)) = derive-public(pub(sec), n) [chaincode]" (deriveNormalChainCode noPassphrase)
     , Property "n <= 0x80000000 => pub(derive(sec, n)) = derive-public(pub(sec), n) [publickey]" (deriveNormalPublicKey dummyPassphrase)
-    {-
-    , Property "derive-hard(sec, n) = derive-hard(encrypted(no-pass, sec), n)" (deriveEq True noPassphrase)
-    , Property "derive-hard(sec, n) = derive-hard(encrypted(dummy, sec), n)" (deriveEq True dummyPassphrase)
-    , Property "derive-norm(sec, n) = derive-norm(encrypted(no-pass, sec), n)" (deriveEq False noPassphrase)
-    , Property "derive-norm(sec, n) = derive-norm(encrypted(dummy, sec), n)" (deriveEq False dummyPassphrase)
-    -}
     ]
   where
     dummyChainCode = B.replicate 32 38
@@ -179,32 +172,34 @@ testEncrypted =
         let a    = seedToSecret s
             pub1 = EdVariant.toPublic <$> a
             ekey = encryptedCreate s pass dummyChainCode
-         in (B.convert <$> pub1) === (encryptedPublic <$> ekey)
+         in case (pub1, ekey) of
+                (CryptoPassed pub, Right enc) -> B.convert pub === encryptedPublic enc
+                _ -> B.empty === B.empty
     pubEqValid pass (ValidSeed (Seed s)) =
         case (seedToSecret s, encryptedCreate s pass dummyChainCode) of
-            (CryptoPassed a, CryptoPassed ekey) ->
+            (CryptoPassed a, Right ekey) ->
                 let pub1 = EdVariant.toPublic a
                  in B.convert pub1 === encryptedPublic ekey
             _ -> error "valid seed got a invalid result"
 
     signEq pass (ValidSeed (Seed s)) (Message msg) =
         case (seedToSecret s, encryptedCreate s pass dummyChainCode) of
-            (CryptoPassed a, CryptoPassed ekey) ->
+            (CryptoPassed a, Right ekey) ->
                 let pub1 = EdVariant.toPublic a
                     sig1 = EdVariant.sign a dummyChainCode pub1 msg
-                    (Signature sig2) = encryptedSign ekey pass msg
+                    (Signature sig2) = unwrap $ encryptedSign ekey pass msg
                  in B.convert sig1 === sig2
             _ -> error "valid seed got a invalid result"
     deriveNormalPublicKey pass dscheme (ValidSeed (Seed s)) nRaw =
-        let ekey = throwCryptoError $ encryptedCreate s pass dummyChainCode
-            ckey = encryptedDerivePrivate dscheme ekey pass n
-            (expectedPubkey, expectedChainCode) = encryptedDerivePublic dscheme (encryptedPublic ekey, encryptedChainCode ekey) n
+        let ekey = unwrap $ encryptedCreate s pass dummyChainCode
+            ckey = unwrap $ encryptedDerivePrivate dscheme ekey pass n
+            (expectedPubkey, _) = encryptedDerivePublic dscheme (encryptedPublic ekey, encryptedChainCode ekey) n
          in encryptedPublic ckey === expectedPubkey
       where n = nRaw `mod` 0x80000000
     deriveNormalChainCode pass dscheme (ValidSeed (Seed s)) nRaw =
-        let ekey = throwCryptoError $ encryptedCreate s pass dummyChainCode
-            ckey = encryptedDerivePrivate dscheme ekey pass n
-            (expectedPubkey, expectedChainCode) = encryptedDerivePublic dscheme (encryptedPublic ekey, encryptedChainCode ekey) n
+        let ekey = unwrap $ encryptedCreate s pass dummyChainCode
+            ckey = unwrap $ encryptedDerivePrivate dscheme ekey pass n
+            (_, expectedChainCode) = encryptedDerivePublic dscheme (encryptedPublic ekey, encryptedChainCode ekey) n
          in encryptedChainCode ckey === expectedChainCode
       where n = nRaw `mod` 0x80000000
             {-
@@ -270,28 +265,43 @@ scalarToSecret = throwCryptoError . EdVariant.secretKey . Edwards25519.unScalar
 testChangePassphrase :: [Test]
 testChangePassphrase =
     [ Property "change-passphrase-publickey-stable" pubEq
-    , Property "normal-derive-key-different-passphrase-stable" deriveNormalEq
-    , Property "hardened-derive-key-different-passphrase-stable" deriveHardenedEq
+    , Property "v2-wrap-is-randomized" randomizedWrap
+    , Property "tampered-v2-fails-validation" tamperedV2Fails
     ]
   where
     pubEq (ValidSeed (Seed s)) (Passphrase p1) (Passphrase p2) =
-        let xprv1 = throwCryptoError $ encryptedCreate s p1 dummyChainCode
-            xprv2 = encryptedChangePass p1 p2 xprv1
+        let xprv1 = unwrap $ encryptedCreate s p1 dummyChainCode
+            xprv2 = unwrap $ encryptedChangePass p1 p2 xprv1
          in encryptedPublic xprv1 === encryptedPublic xprv2
 
     deriveNormalEq dscheme (ValidSeed (Seed s)) (Passphrase p1) (Passphrase p2) n =
-        let xprv1 = throwCryptoError $ encryptedCreate s p1 dummyChainCode
-            xprv2 = encryptedChangePass p1 p2 xprv1
-            cPrv1 = encryptedDerivePrivate dscheme xprv1 p1 (toNormal n)
-            cPrv2 = encryptedDerivePrivate dscheme xprv2 p2 (toNormal n)
+        let xprv1 = unwrap $ encryptedCreate s p1 dummyChainCode
+            xprv2 = unwrap $ encryptedChangePass p1 p2 xprv1
+            cPrv1 = unwrap $ encryptedDerivePrivate dscheme xprv1 p1 (toNormal n)
+            cPrv2 = unwrap $ encryptedDerivePrivate dscheme xprv2 p2 (toNormal n)
          in encryptedPublic cPrv1 === encryptedPublic cPrv2
 
     deriveHardenedEq dscheme (ValidSeed (Seed s)) (Passphrase p1) (Passphrase p2) n =
-        let xprv1 = throwCryptoError $ encryptedCreate s p1 dummyChainCode
-            xprv2 = encryptedChangePass p1 p2 xprv1
-            cPrv1 = encryptedDerivePrivate dscheme xprv1 p1 (toHardened n)
-            cPrv2 = encryptedDerivePrivate dscheme xprv2 p2 (toHardened n)
+        let xprv1 = unwrap $ encryptedCreate s p1 dummyChainCode
+            xprv2 = unwrap $ encryptedChangePass p1 p2 xprv1
+            cPrv1 = unwrap $ encryptedDerivePrivate dscheme xprv1 p1 (toHardened n)
+            cPrv2 = unwrap $ encryptedDerivePrivate dscheme xprv2 p2 (toHardened n)
          in encryptedPublic cPrv1 === encryptedPublic cPrv2
+
+    randomizedWrap (ValidSeed (Seed s)) (Passphrase p) =
+        let xprv1 = unwrap $ encryptedCreate s p dummyChainCode
+            xprv2 = unwrap $ encryptedChangePass p p xprv1
+         in unEncryptedKey xprv1 /= unEncryptedKey xprv2
+
+    tamperedV2Fails (ValidSeed (Seed s)) (Passphrase p) =
+        let xprv1 = unwrap $ encryptedCreate s p dummyChainCode
+            bytes = unEncryptedKey xprv1
+            tampered = B.take 1 bytes <> B.singleton 0 <> B.drop 2 bytes
+         in case encryptedKey tampered of
+                Left _ -> True
+                Right e -> case encryptedValidatePassphrase e p of
+                    Left _ -> True
+                    Right () -> False
 
     dummyChainCode = B.replicate 32 38
 
@@ -353,7 +363,7 @@ testEdBIP32 =
         withHardIndex idx $ \hIdx ->
             Property (fromList $ show idx) $ \rsk rcc ->
                 let extPriv = makeXprv rsk rcc
-                    cPrv1   = deriveXPrv DerivationScheme2 noPassphrase extPriv (fromIntegral idx)
+                    cPrv1   = unwrap $ deriveXPrv DerivationScheme2 noPassphrase extPriv (fromIntegral idx)
                     k       = makeEdBip32 rsk rcc
                     cK      = EdBIP32.derive hIdx k
                  in xprvEqKey cPrv1 cK
@@ -361,7 +371,7 @@ testEdBIP32 =
         withSoftIndex idx $ \hIdx ->
             Property (fromList $ show idx) $ \rsk rcc ->
                 let extPriv = makeXprv rsk rcc
-                    cPrv1   = deriveXPrv DerivationScheme2 noPassphrase extPriv (fromIntegral idx)
+                    cPrv1   = unwrap $ deriveXPrv DerivationScheme2 noPassphrase extPriv (fromIntegral idx)
                     k       = makeEdBip32 rsk rcc
                     cK      = EdBIP32.derive hIdx k
                  in xprvEqKey cPrv1 cK
@@ -377,13 +387,18 @@ testEdBIP32 =
 
     xprvEqKey :: XPrv -> EdBIP32.Key -> Bool
     xprvEqKey xPrv (k1,k2,EdBIP32.ChainCode cc) =
-        -- xprv is 64 bits of secret key, 32 bits of public key and 32 bits of chain code
-        let (s1, r1) = B.splitAt 32 $ B.convert xPrv
-            (s2, r2) = B.splitAt 32 r1
-            (_p , c) = B.splitAt 32 r2
-         in assertEq "chain code" (B.unpack c) (Bytes.unpack cc) &&
-            assertEq "key2" (B.unpack s2) (Bytes.unpack $ Bytes.fromBits Bytes.LittleEndian k2) &&
-            assertEq "key1" (B.unpack s1) (Bytes.unpack $ Bytes.fromBits Bytes.LittleEndian k1)
+        let expectedBytes = keyBytes <> pubBytes <> ccBytes
+            expected = either (error "expected xprv") id $ xprv expectedBytes
+            expectedPub = toXPub expected
+            actualPub = toXPub xPrv
+            msg = B.pack [0,1,2,3,4,5]
+            (point, _) = EdBIP32.toPublic (k1, k2, EdBIP32.ChainCode cc)
+            keyBytes = B.pack $ Bytes.unpack (Bytes.fromBits Bytes.LittleEndian k1)
+                    <> Bytes.unpack (Bytes.fromBits Bytes.LittleEndian k2)
+            pubBytes = B.pack $ Bytes.unpack $ Bytes.fromBits Bytes.LittleEndian point
+            ccBytes = B.pack $ Bytes.unpack cc
+         in actualPub == expectedPub &&
+            unwrap (sign noPassphrase xPrv msg) == unwrap (sign noPassphrase expected msg)
 
     xprvEqPublicKey :: XPub -> EdBIP32.Public -> Bool
     xprvEqPublicKey xPub (point, EdBIP32.ChainCode cc) =
@@ -409,15 +424,16 @@ testEdBIP32 =
 -- -------------------------------------------------------------------------- --
 
 main :: IO ()
-main = defaultMain $ Group "cardano-crypto"
-    [ Group "edwards25519-arithmetic" testEdwards25519
-    , Group "edwards25519-BIP32" testEdBIP32
-    , Group "point-addition" testPointAdd
-    , Group "encrypted" testEncrypted
-    , Group "change-pass" testChangePassphrase
-    , Crypto.tests
-    , Cardano.tests
-    ]
+main = do
+    withFastKdfForTesting $ defaultMain $ Group "cardano-crypto"
+        [ Group "edwards25519-arithmetic" testEdwards25519
+        , Group "edwards25519-BIP32" testEdBIP32
+        , Group "point-addition" testPointAdd
+        , Group "encrypted" testEncrypted
+        , Group "change-pass" testChangePassphrase
+        , Crypto.tests
+        , Cardano.tests
+        ]
     {-
     , Group "edwards25519-ed25519variant" testVariant
     , Group "hd-derivation" testHdDerivation

@@ -32,6 +32,8 @@ import Data.ByteArray (Bytes, convert)
 import qualified Data.ByteArray as B
 
 import           Cardano.Crypto.Wallet
+import           Cardano.Crypto.Wallet.Encrypted (withDeterministicRandomnessForTesting,
+                                                  withFastKdfForTesting)
 import           Cardano.Crypto.Encoding.Seed
 import           Cardano.Crypto.Encoding.BIP39
 import           Crypto.Encoding.BIP39.English (english)
@@ -39,12 +41,16 @@ import           Cardano.Internal.Compat (fromRight)
 
 import Test.Orphans
 
+unwrap :: Show e => Either e a -> a
+unwrap = either (error . show) id
+
 main :: IO ()
-main = defaultTest $ do
-    goldenSignatureEd25519
-    goldenBIP39
-    goldenHDWallet
-    goldenPaperwallet
+main = do
+    withFastKdfForTesting $ withDeterministicRandomnessForTesting $ defaultTest $ do
+        goldenSignatureEd25519
+        goldenBIP39
+        goldenHDWallet
+        goldenPaperwallet
 
 -- -------------------------------------------------------------------------- --
 
@@ -105,23 +111,23 @@ goldenHDWallet = group $ do
         let -- 1. retrieve the seed
             -- 1. retrieve the seed and 2. generate from the seed
             (seed, master) = case mkg of
-                        MasterKeyRetryOld ->
-                            let seedX = fromMaybe (error "Invalid Mnemonic, cannot retrieve the `Seed'")
-                                                 (cardanoSlSeed p mw)
-                             in (seedX, generate seedX pw)
-                        MasterKeyPBKDF    ->
-                            let seedX = seedFromMnemonics p mw
-                             in (seedX, generateNew seedX (B.empty :: Bytes) pw)
+                    MasterKeyRetryOld ->
+                        let seedX = fromMaybe (error "Invalid Mnemonic, cannot retrieve the `Seed'")
+                                            (cardanoSlSeed p mw)
+                         in (seedX, unwrap $ generate seedX pw)
+                    MasterKeyPBKDF ->
+                        let seedX = seedFromMnemonics p mw
+                         in (seedX, unwrap $ generateNew seedX (B.empty :: Bytes) pw)
             -- 3. get the XPrv from the master and the path
             priv = deriveWith master path
             -- 4. get the public key
             pub = toXPub priv
             -- 5. sign some data
-            s = sign pw priv toSign
+            s = unwrap $ sign pw priv toSign
          in (pub, priv, s, seed)
       where
         deriveWith :: XPrv -> [Word32] -> XPrv
-        deriveWith = foldl' (deriveXPrv ds pw)
+        deriveWith = foldl' (\acc ix -> unwrap $ deriveXPrv ds pw acc ix)
 
         seedFromMnemonics :: forall n csz mw . ConsistentEntropy n mw csz
                           => Proxy n

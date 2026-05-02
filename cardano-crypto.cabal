@@ -1,5 +1,5 @@
 name:                cardano-crypto
-version:             1.3.0
+version:             2.0.0
 synopsis:            Cryptography primitives for cardano
 description:         This package provide cryptographic primitives in use in the Cardano network, mostly related to legacy Byron era.
 homepage:            https://github.com/input-output-hk/cardano-crypto#readme
@@ -44,18 +44,20 @@ library
                        Crypto.Encoding.BIP39.English
                        Cardano.Internal.Compat
   build-depends:       base >= 4.7 && < 5
-                     , basement >= 0.0.16
-                     , bytestring >= 0.11
-                     , crypton >= 0.32 && < 1.1
-                     , deepseq
-                     , foundation
-                     , integer-gmp
-                     , hashable >= 1.4 && < 1.6
+                      , basement >= 0.0.16
+                      , bytestring >= 0.11
+                      , cborg
+                      , crypton >= 0.32 && < 1.1
+                      , deepseq
+                      , foundation
+                      , integer-gmp
+                      , hashable >= 1.4 && < 1.6
                      , memory >= 0.18
   default-language:    Haskell2010
   C-sources:           cbits/ed25519/ed25519.c
                        cbits/encrypted_sign.c
   include-dirs:        cbits/ed25519 cbits
+  extra-libraries:     sodium
   default-extensions:  GeneralizedNewtypeDeriving
   ghc-options:         -Wall
   cc-options:          -Wall -Wno-unused-function
@@ -75,11 +77,12 @@ test-suite cardano-crypto-test
                        Test.Cardano.Crypto.Encoding.Seed
                        Utils
   build-depends:       base
-                     , bytestring
-                     , memory
-                     , crypton
-                     , cardano-crypto
-                     , basement
+                      , bytestring
+                      , cborg
+                      , memory
+                      , crypton
+                      , cardano-crypto
+                      , basement
                      , foundation
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
@@ -90,12 +93,13 @@ test-suite cardano-crypto-golden-tests
   main-is:             GoldenTest.hs
   other-modules:       Test.Orphans
   build-depends:       base
-                     , basement
-                     , foundation
-                     , memory
-                     , bytestring
-                     , crypton
-                     , cardano-crypto
+                      , basement
+                      , foundation
+                      , memory
+                      , bytestring
+                      , cborg
+                      , crypton
+                      , cardano-crypto
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-extensions:  NoImplicitPrelude
   default-language:    Haskell2010
@@ -115,12 +119,13 @@ executable golden-tests
   else
     buildable:         False
   build-depends:       base
-                     , basement
-                     , foundation
-                     , memory
-                     , bytestring
-                     , crypton
-                     , cardano-crypto
+                      , basement
+                      , foundation
+                      , memory
+                      , bytestring
+                      , cborg
+                      , crypton
+                      , cardano-crypto
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-extensions:  NoImplicitPrelude
   default-language:    Haskell2010
@@ -130,11 +135,11 @@ benchmark cardano-crypto-bench
   hs-source-dirs:      benchs
   Main-is:             Bench.hs
   build-depends:       base
-                     , bytestring
-                     , memory
-                     , crypton
-                     , cardano-crypto
-                     , gauge
+                      , bytestring
+                      , deepseq
+                      , memory
+                      , crypton
+                      , cardano-crypto
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
