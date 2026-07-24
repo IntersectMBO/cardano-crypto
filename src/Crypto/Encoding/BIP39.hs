@@ -96,6 +96,7 @@ import qualified Crypto.KDF.PBKDF2 as PBKDF2
 
 import           Crypto.Encoding.BIP39.Dictionary
 import           Cardano.Internal.Compat (fromRight)
+import           Compat.ByteArray (AsBytes (..))
 
 -- -------------------------------------------------------------------------- --
 -- Entropy
@@ -297,8 +298,8 @@ phraseToSeed :: ValidMnemonicSentence mw
 phraseToSeed mw dic passphrase =
     PBKDF2.fastPBKDF2_SHA512
                     (PBKDF2.Parameters 2048 64)
-                    sentence
-                    (toData ("mnemonic" `mappend` passphrase))
+                    (AsBytes sentence)
+                    (AsBytes (toData ("mnemonic" `mappend` passphrase)))
   where
     sentence = toData $ mnemonicPhraseToString dic mw
     toData = String.toBytes String.UTF8
