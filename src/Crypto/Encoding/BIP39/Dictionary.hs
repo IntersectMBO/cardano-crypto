@@ -22,7 +22,6 @@ module Crypto.Encoding.BIP39.Dictionary
     ) where
 
 import           Basement.NormalForm
-import           Basement.Compat.Typeable
 import           Basement.Types.OffsetSize (Offset(..))
 import           Basement.From (TryFrom(..))
 import           Basement.Imports
@@ -44,14 +43,13 @@ data Dictionary = Dictionary
     , dictionaryWordSeparator :: String
       -- ^ joining string (e.g. space for english)
     }
-  deriving (Typeable)
 
 -- | Index of the mnemonic word in the 'Dictionary'
 --
 -- 'WordIndex' are within range of [0..2047]
 --
 newtype WordIndex = WordIndex { unWordIndex :: Offset String }
-    deriving (Show, Eq, Ord, Typeable, NormalForm)
+    deriving (Show, Eq, Ord, NormalForm)
 instance Enum WordIndex where
     toEnum = wordIndex . toEnum
     fromEnum = fromEnum . unWordIndex

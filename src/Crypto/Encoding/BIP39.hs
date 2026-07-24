@@ -69,7 +69,6 @@ import           Basement.Nat
 import qualified Basement.Sized.List as ListN
 import           Basement.Sized.List (ListN)
 import           Basement.NormalForm
-import           Basement.Compat.Typeable
 import           Basement.Numerical.Number (IsIntegral(..))
 import           Basement.Imports
 
@@ -104,7 +103,7 @@ import           Cardano.Internal.Compat (fromRight)
 --
 -- the 'Nat' type parameter represent the size, in bits, of this checksum.
 newtype Checksum (bits :: Nat) = Checksum Word8
-    deriving (Show, Eq, Typeable, NormalForm)
+    deriving (Show, Eq, NormalForm)
 
 checksum :: forall csz ba . (KnownNat csz, ByteArrayAccess ba)
          => ba -> Checksum csz
@@ -137,7 +136,7 @@ data Entropy (n :: Nat) = Entropy
      , entropyChecksum :: !(Checksum (CheckSumBits n))
         -- ^ Get the checksum of the Entropy
      }
-  deriving (Show, Eq, Typeable)
+  deriving (Show, Eq)
 instance NormalForm (Entropy n) where
     toNormalForm (Entropy !_ cs) = toNormalForm cs
 instance Arbitrary (Entropy 96) where
@@ -272,7 +271,7 @@ entropyToWords (Entropy bs (Checksum w)) =
 -- -------------------------------------------------------------------------- --
 
 newtype Seed = Seed ByteString
-  deriving (Show, Eq, Ord, Typeable, Semigroup, Monoid, ByteArrayAccess, ByteArray, IsString)
+  deriving (Show, Eq, Ord, Semigroup, Monoid, ByteArrayAccess, ByteArray, IsString)
 
 type Passphrase = String
 
@@ -317,7 +316,7 @@ phraseToSeed mw dic passphrase =
 newtype MnemonicSentence (mw :: Nat) = MnemonicSentence
     { mnemonicSentenceToListN :: ListN mw WordIndex
     }
-  deriving (Show, Eq, Ord, Typeable, NormalForm)
+  deriving (Show, Eq, Ord, NormalForm)
 instance ValidMnemonicSentence mw => IsList (MnemonicSentence mw) where
     type Item (MnemonicSentence mw) = WordIndex
     fromList = MnemonicSentence . fromMaybe (error "invalid mnemonic size") . ListN.toListN
@@ -336,7 +335,7 @@ type ValidMnemonicSentence (mw :: Nat) =
 newtype MnemonicPhrase (mw :: Nat) = MnemonicPhrase
     { mnemonicPhraseToListN :: ListN mw String
     }
-  deriving (Show, Eq, Ord, Typeable, NormalForm)
+  deriving (Show, Eq, Ord, NormalForm)
 instance ValidMnemonicSentence mw => IsList (MnemonicPhrase mw) where
     type Item (MnemonicPhrase mw) = String
     fromList = fromRight (error "invalid mnemonic phrase") . mnemonicPhrase

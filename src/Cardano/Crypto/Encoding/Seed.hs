@@ -73,7 +73,7 @@ iterations :: Int
 iterations = 10000
 
 newtype ScrambleIV = ScrambleIV ByteString
-    deriving (Eq,Ord,Show,Typeable,ByteArrayAccess)
+    deriving (Eq,Ord,Show,ByteArrayAccess)
 instance Arbitrary ScrambleIV where
     arbitrary = do
         l <- arbitrary :: Gen (ListN IVSizeBytes Word8)

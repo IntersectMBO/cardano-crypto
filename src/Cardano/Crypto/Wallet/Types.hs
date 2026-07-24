@@ -18,7 +18,7 @@ import Foundation.Check (Arbitrary(..), frequency)
 type DerivationIndex = Word32
 
 data DerivationScheme = DerivationScheme1 | DerivationScheme2
-    deriving (Show, Eq, Ord, Enum, Bounded, Typeable)
+    deriving (Show, Eq, Ord, Enum, Bounded)
 instance Arbitrary DerivationScheme where
     arbitrary = frequency $ nonEmpty_ [ (1, pure DerivationScheme1), (1, pure DerivationScheme2) ]
 
