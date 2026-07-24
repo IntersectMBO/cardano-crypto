@@ -58,6 +58,8 @@ import           Basement.Sized.List (ListN)
 import qualified Basement.Sized.List as ListN
 import Data.ByteArray (ByteArrayAccess)
 
+import Prelude (type (~))
+
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 

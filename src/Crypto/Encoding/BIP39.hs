@@ -88,6 +88,8 @@ import           Data.Proxy
 
 import           GHC.TypeLits
 
+import           Prelude (type (~))
+
 import           Crypto.Hash (hashWith, SHA256(..))
 import           Crypto.Number.Serialize (os2ip, i2ospOf_)
 import qualified Crypto.KDF.PBKDF2 as PBKDF2
