@@ -183,7 +183,7 @@ goldenSignatureEd25519 = golden (Proxy :: Proxy SignatureEd25519) verify
 
 -- | `m/0'/1'/1000'`
 newtype ChainCodePath = Root [Word32]
-  deriving (Show, Eq, Typeable)
+  deriving (Show, Eq)
 instance Arbitrary ChainCodePath where
     arbitrary = Root <$> arbitrary
 
@@ -199,7 +199,7 @@ data Language = English
 -- | a convenient type to help read/parse/document expected input of type
 -- BIP39 mnemonics
 newtype Mnemonic (k :: Language) n = Mnemonic (MnemonicSentence n)
-  deriving (Eq, Typeable)
+  deriving (Eq)
 
 -- | The type of master key generation
 data MasterKeyGeneration = MasterKeyRetryOld | MasterKeyPBKDF

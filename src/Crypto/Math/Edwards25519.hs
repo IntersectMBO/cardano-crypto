@@ -51,11 +51,8 @@ import           Crypto.Hash
 import           Crypto.Number.ModArithmetic
 import           Crypto.Number.Serialize
 import           Data.Bits
-#if MIN_VERSION_memory(0,14,18)
-import qualified Data.ByteArray              as B hiding (append, reverse)
-#else
-import qualified Data.ByteArray              as B hiding (append)
-#endif
+
+import qualified Data.ByteArray              as BA hiding (append)
 import           Data.ByteString             (ByteString)
 import qualified Data.ByteString             as B (append, reverse)
 import           Data.Hashable               (Hashable)
@@ -94,11 +91,11 @@ fq = Fq
 -- to be in the right base field range on purpose.
 scalar :: ByteString -> Scalar
 scalar bs
-    | B.length bs /= 32 = error "invalid scalar"
+    | BA.length bs /= 32 = error "invalid scalar"
     | otherwise         = Scalar bs
 
 scalarP :: Bytes 32 -> Scalar
-scalarP = scalar . B.pack . Bytes.unpack
+scalarP = scalar . BA.pack . Bytes.unpack
 
 
 -- | Check if a scalar is valid and all the bits properly set/cleared
@@ -110,44 +107,44 @@ scalarP = scalar . B.pack . Bytes.unpack
 -- Check if the length is of expected size
 pointCompressed :: HasCallStack => ByteString -> PointCompressed
 pointCompressed bs
-    | B.length bs /= 32 = error ("invalid compressed point: expecting 32 bytes, got " ++ show (B.length bs) ++ " bytes")
+    | BA.length bs /= 32 = error ("invalid compressed point: expecting 32 bytes, got " ++ show (BA.length bs) ++ " bytes")
     | otherwise         = PointCompressed bs
 
 pointCompressedP :: Bytes 32 -> PointCompressed
-pointCompressedP = pointCompressed . B.pack . Bytes.unpack
+pointCompressedP = pointCompressed . BA.pack . Bytes.unpack
 
 unPointCompressedP :: PointCompressed -> Bytes 32
-unPointCompressedP (PointCompressed bs) = Bytes.pack $ B.unpack bs
+unPointCompressedP (PointCompressed bs) = Bytes.pack $ BA.unpack bs
 
 -- | Create a signature using a variant of ED25519 signature
 --
 -- we don't hash the secret key to derive a key + prefix, but
 -- instead we take an explicit salt and compute a prefix
 -- using the secret key + salt.
-sign :: B.ByteArrayAccess msg => Scalar -> ByteString -> msg -> Signature
+sign :: BA.ByteArrayAccess msg => Scalar -> ByteString -> msg -> Signature
 sign a salt msg =
     Signature (unPointCompressed pR `B.append` toBytes s)
   where
     prefix = hash ((unScalar a) `B.append` salt) :: Digest SHA512
     pA = scalarToPoint a
-    r = sha512_modq (B.convert prefix `B.append` B.convert msg)
+    r = sha512_modq (BA.convert prefix `B.append` BA.convert msg)
     pR = ePointCompress $ ePointMul r pG
-    h = sha512_modq (unPointCompressed pR `B.append` unPointCompressed pA `B.append` B.convert msg)
+    h = sha512_modq (unPointCompressed pR `B.append` unPointCompressed pA `B.append` BA.convert msg)
     s = (unFq r + unFq h * (fromBytes (unScalar a))) `mod` q
 
 -- | Verify a signature
-verify :: B.ByteArrayAccess msg => PointCompressed -> msg -> Signature -> Bool
+verify :: BA.ByteArrayAccess msg => PointCompressed -> msg -> Signature -> Bool
 verify pA msg (Signature signature) =
     pS `pointEqual` ePointAdd (ePointDecompress pR) hA
   where
     (pR, s) =
-        let (sig0, sig1) = B.splitAt 32 signature
+        let (sig0, sig1) = BA.splitAt 32 signature
          in (PointCompressed sig0, fq $ fromBytes sig1)
 
     pointEqual (ExtendedPoint pX pY pZ _) (ExtendedPoint qX qY qZ _) =
         ((pX * qZ - qX * pZ) `mod` p == 0) && ((pY * qZ - qY * pZ) `mod` p == 0)
 
-    h = sha512_modq (unPointCompressed pR `B.append` unPointCompressed pA `B.append` B.convert msg)
+    h = sha512_modq (unPointCompressed pR `B.append` unPointCompressed pA `B.append` BA.convert msg)
     pS = ePointMul s pG
     hA = ePointMul h (ePointDecompress pA)
 
@@ -263,6 +260,6 @@ pG = ExtendedPoint g_x g_y 1 ((g_x * g_y) `mod` p)
     !g_y = (4 * modp_inv 5) `mod` p
     !g_x = recoverX g_y False
 
-sha512_modq :: B.ByteArrayAccess ba => ba -> Fq
+sha512_modq :: BA.ByteArrayAccess ba => ba -> Fq
 sha512_modq bs =
-    Fq (fromBytes (B.convert (hash bs :: Digest SHA512)) `mod` q)
+    Fq (fromBytes (BA.convert (hash bs :: Digest SHA512)) `mod` q)

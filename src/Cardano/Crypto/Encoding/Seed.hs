@@ -52,11 +52,14 @@ import Basement.Nat
 import Crypto.Error
 
 import Data.ByteArray (xor, ScrubbedBytes)
+import Compat.ByteArray (AsBytes (..))
 import Crypto.Encoding.BIP39
 import qualified Crypto.KDF.PBKDF2 as PBKDF2
 import           Basement.Sized.List (ListN)
 import qualified Basement.Sized.List as ListN
 import Data.ByteArray (ByteArrayAccess)
+
+import Prelude (type (~))
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
@@ -73,7 +76,7 @@ iterations :: Int
 iterations = 10000
 
 newtype ScrambleIV = ScrambleIV ByteString
-    deriving (Eq,Ord,Show,Typeable,ByteArrayAccess)
+    deriving (Eq,Ord,Show,ByteArrayAccess)
 instance Arbitrary ScrambleIV where
     arbitrary = do
         l <- arbitrary :: Gen (ListN IVSizeBytes Word8)
@@ -110,7 +113,7 @@ scramble (ScrambleIV iv) e passphrase =
         otp :: ScrubbedBytes
         otp = PBKDF2.fastPBKDF2_SHA512
                     (PBKDF2.Parameters iterations entropySize)
-                    passphrase
+                    (AsBytes passphrase)
                     salt
         ee = xor otp (entropyRaw e)
      in case toEntropy @entropysizeO (iv <> ee) of
@@ -174,6 +177,6 @@ unscramble e passphrase =
     otp :: ScrubbedBytes
     otp = PBKDF2.fastPBKDF2_SHA512
                   (PBKDF2.Parameters iterations entropySize)
-                  passphrase
+                  (AsBytes passphrase)
                   salt
     entropySize = fromIntegral (natVal (Proxy @entropysizeO)) `div` 8

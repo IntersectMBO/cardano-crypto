@@ -1,5 +1,5 @@
 name:                cardano-crypto
-version:             1.3.0
+version:             1.4.0
 synopsis:            Cryptography primitives for cardano
 description:         This package provide cryptographic primitives in use in the Cardano network, mostly related to legacy Byron era.
 homepage:            https://github.com/input-output-hk/cardano-crypto#readme
@@ -13,7 +13,7 @@ build-type:          Simple
 extra-source-files:  README.md
                      cbits/*.h
                      cbits/ed25519/*.h
-cabal-version:       >=1.10
+cabal-version:       >=2.0
 
 flag golden-tests
   description:       compile the golden tests and run them
@@ -43,15 +43,17 @@ library
                        Crypto.Encoding.BIP39.Dictionary
                        Crypto.Encoding.BIP39.English
                        Cardano.Internal.Compat
+  other-modules:       Compat.ByteArray
   build-depends:       base >= 4.7 && < 5
+                     , array
                      , basement >= 0.0.16
                      , bytestring >= 0.11
-                     , crypton >= 0.32 && < 1.1
+                     , crypton ^>= 1.1
                      , deepseq
                      , foundation
                      , integer-gmp
                      , hashable >= 1.4 && < 1.6
-                     , memory >= 0.18
+                     , ram >= 0.22
   default-language:    Haskell2010
   C-sources:           cbits/ed25519/ed25519.c
                        cbits/encrypted_sign.c
@@ -76,7 +78,7 @@ test-suite cardano-crypto-test
                        Utils
   build-depends:       base
                      , bytestring
-                     , memory
+                     , ram
                      , crypton
                      , cardano-crypto
                      , basement
@@ -92,7 +94,7 @@ test-suite cardano-crypto-golden-tests
   build-depends:       base
                      , basement
                      , foundation
-                     , memory
+                     , ram
                      , bytestring
                      , crypton
                      , cardano-crypto
@@ -117,7 +119,7 @@ executable golden-tests
   build-depends:       base
                      , basement
                      , foundation
-                     , memory
+                     , ram
                      , bytestring
                      , crypton
                      , cardano-crypto
@@ -131,7 +133,7 @@ benchmark cardano-crypto-bench
   Main-is:             Bench.hs
   build-depends:       base
                      , bytestring
-                     , memory
+                     , ram
                      , crypton
                      , cardano-crypto
                      , gauge
