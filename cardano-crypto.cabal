@@ -43,7 +43,7 @@ library
                        Crypto.Encoding.BIP39.Dictionary
                        Crypto.Encoding.BIP39.English
                        Cardano.Internal.Compat
-  other-modules:       Compat.ByteArray
+  other-modules:       Cardano.Crypto.Compat
   build-depends:       base >= 4.7 && < 5
                      , array
                      , basement >= 0.0.16

@@ -52,7 +52,7 @@ import Basement.Nat
 import Crypto.Error
 
 import Data.ByteArray (xor, ScrubbedBytes)
-import Compat.ByteArray (AsBytes (..))
+import Cardano.Crypto.Compat (AsBytes (..))
 import Crypto.Encoding.BIP39
 import qualified Crypto.KDF.PBKDF2 as PBKDF2
 import           Basement.Sized.List (ListN)

@@ -17,7 +17,7 @@
 -- @inspector@. Instances on the local 'AsBytes' wrapper can't collide with
 -- anything defined elsewhere, since nothing outside this package mentions
 -- 'AsBytes'.
-module Compat.ByteArray
+module Cardano.Crypto.Compat
     ( AsBytes (..)
     ) where
 

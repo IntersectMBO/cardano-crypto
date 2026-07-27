@@ -96,7 +96,7 @@ import qualified Crypto.KDF.PBKDF2 as PBKDF2
 
 import           Crypto.Encoding.BIP39.Dictionary
 import           Cardano.Internal.Compat (fromRight)
-import           Compat.ByteArray (AsBytes (..))
+import           Cardano.Crypto.Compat (AsBytes (..))
 
 -- -------------------------------------------------------------------------- --
 -- Entropy
