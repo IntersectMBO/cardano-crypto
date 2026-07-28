@@ -143,7 +143,7 @@ unXPrv (XPrv e) = unEncryptedKey e
 
 xpub :: ByteString -> Either String XPub
 xpub bs
-    | B.length bs /= 64 = Left ("error: xprv needs to be 64 bytes: got " ++ show (B.length bs) ++ " bytes")
+    | B.length bs /= 64 = Left ("error: xpub needs to be 64 bytes: got " ++ show (B.length bs) ++ " bytes")
     | otherwise         =
         let (b1, b2) = B.splitAt 32 bs
          in Right $ XPub b1 (ChainCode $ convert b2)
